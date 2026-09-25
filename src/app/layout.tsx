@@ -21,7 +21,8 @@ export const metadata: Metadata = {
   title: "Ziina ↔ Zoho | Integration & Invoicing Platform",
   description: "متابعة وتدقيق دفعات Ziina وإصدار فواتير Zoho Books آلياً",
   icons: {
-    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 

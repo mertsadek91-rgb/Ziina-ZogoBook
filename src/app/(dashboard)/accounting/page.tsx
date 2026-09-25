@@ -2,8 +2,22 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Banknote, Building2, CreditCard, Landmark, Receipt, TrendingUp, UserRound, Wallet } from "lucide-react";
-import { Alert, Card, KpiCard } from "@/components/ui";
+import {
+  Banknote,
+  Building2,
+  CreditCard,
+  Landmark,
+  Receipt,
+  TrendingUp,
+  UserRound,
+  Wallet,
+  Calendar,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
+import { Alert, Card, KpiCard, Badge } from "@/components/ui";
 import { Money } from "@/components/ledger";
 import { api } from "@/components/fetcher";
 import { useAcc } from "@/lib/i18n-acc";
@@ -26,7 +40,6 @@ interface Summary {
 
 const dubai = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(d);
 
-/** [from, to] as yyyy-mm-dd in Dubai time for a preset. */
 function presetRange(p: string): [string, string] {
   const today = dubai(new Date());
   const [y, m] = today.split("-").map(Number);
@@ -43,9 +56,20 @@ function presetRange(p: string): [string, string] {
 }
 
 const ICONS: Record<string, React.ReactNode> = {
-  gateway: <CreditCard className="h-4 w-4" />,
-  bank: <Landmark className="h-4 w-4" />,
-  partner: <UserRound className="h-4 w-4" />,
+  gateway: <CreditCard className="h-4 w-4 text-purple-600" />,
+  bank: <Landmark className="h-4 w-4 text-sky-600" />,
+  partner: <UserRound className="h-4 w-4 text-brand" />,
+};
+
+const CAT_GRADIENTS: Record<string, string> = {
+  ads: "from-blue-500 to-indigo-600",
+  subscriptions: "from-purple-500 to-violet-600",
+  services: "from-sky-400 to-cyan-500",
+  salaries: "from-emerald-400 to-teal-500",
+  office: "from-amber-400 to-orange-500",
+  government: "from-slate-500 to-slate-700",
+  refunds: "from-rose-400 to-red-500",
+  other: "from-slate-400 to-slate-500",
 };
 
 export default function AccountingOverview() {
@@ -80,161 +104,235 @@ export default function AccountingOverview() {
 
   return (
     <div className="space-y-6">
-      {/* Period */}
-      <Card className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-wrap gap-1.5">
+      {/* Date Period Filter Bar */}
+      <Card className="flex flex-wrap items-center justify-between gap-4">
+        {/* Presets Button Group */}
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-1">
           {["this_month", "last_month", "this_year", "all_time"].map((p) => (
             <button
               key={p}
               type="button"
               onClick={() => choose(p)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                preset === p ? "bg-brand text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-150 ${
+                preset === p
+                  ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
               }`}
             >
               {a[p as "this_month"]}
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <div>
-            <label>{a.from}</label>
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => {
-                setPreset("custom");
-                setRange([e.target.value, to]);
-              }}
-            />
+
+        {/* Custom Range Inputs */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-slate-500">{a.from}:</span>
+            <div className="relative">
+              <Calendar className="pointer-events-none absolute top-1/2 -translate-y-1/2 ms-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="date"
+                value={from}
+                onChange={(e) => {
+                  setPreset("custom");
+                  setRange([e.target.value, to]);
+                }}
+                className="ps-8 py-1.5 text-xs font-medium w-auto"
+              />
+            </div>
           </div>
-          <div>
-            <label>{a.to}</label>
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => {
-                setPreset("custom");
-                setRange([from, e.target.value]);
-              }}
-            />
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-slate-500">{a.to}:</span>
+            <div className="relative">
+              <Calendar className="pointer-events-none absolute top-1/2 -translate-y-1/2 ms-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="date"
+                value={to}
+                onChange={(e) => {
+                  setPreset("custom");
+                  setRange([from, e.target.value]);
+                }}
+                className="ps-8 py-1.5 text-xs font-medium w-auto"
+              />
+            </div>
           </div>
         </div>
       </Card>
 
       {error && <Alert tone="error">{error}</Alert>}
-      {!data && !error && <div className="text-sm text-slate-500">…</div>}
+      {!data && !error && (
+        <div className="flex h-32 items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+        </div>
+      )}
 
       {r && data && (
         <>
-          {/* KPIs */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {/* Top Financial Executive KPIs */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <KpiCard
               title={a.sales}
               value={formatMoney(r.sales)}
               subtext={`${r.salesCount} ${a.payments_n}`}
               icon={<Wallet className="h-5 w-5 text-emerald-600" />}
             />
-            <KpiCard title={a.gateway_fees} value={formatMoney(r.gatewayFees)} icon={<CreditCard className="h-5 w-5 text-purple-600" />} />
-            <KpiCard title={a.bank_fees} value={formatMoney(r.bankFees)} icon={<Landmark className="h-5 w-5 text-sky-600" />} />
-            <KpiCard title={a.expenses} value={formatMoney(r.expenses)} icon={<Receipt className="h-5 w-5 text-amber-600" />} />
+            <KpiCard
+              title={a.gateway_fees}
+              value={formatMoney(r.gatewayFees)}
+              icon={<CreditCard className="h-5 w-5 text-purple-600" />}
+            />
+            <KpiCard
+              title={a.bank_fees}
+              value={formatMoney(r.bankFees)}
+              icon={<Landmark className="h-5 w-5 text-sky-600" />}
+            />
+            <KpiCard
+              title={a.expenses}
+              value={formatMoney(r.expenses)}
+              icon={<Receipt className="h-5 w-5 text-amber-600" />}
+            />
             <KpiCard
               title={a.net_profit}
-              value={<span className={r.netProfit < 0 ? "text-rose-600" : "text-emerald-700"}>{formatMoney(r.netProfit)}</span>}
+              className="col-span-2 sm:col-span-1 lg:col-span-1 bg-gradient-to-br from-white to-brand-50/30"
+              value={
+                <span className={r.netProfit < 0 ? "text-rose-600" : "text-emerald-700"}>
+                  {formatMoney(r.netProfit)}
+                </span>
+              }
               subtext={r.otherIncome ? `${a.other_income}: ${formatMoney(r.otherIncome)}` : undefined}
               icon={<TrendingUp className="h-5 w-5 text-brand" />}
             />
           </div>
 
-          {/* Partner statements */}
-          <section className="space-y-3">
+          {/* Partner Statements Section */}
+          <section className="space-y-3.5">
             <div>
-              <h2 className="text-base font-bold text-slate-900">{a.partners_title}</h2>
+              <h2 className="text-base font-extrabold tracking-tight text-slate-900">{a.partners_title}</h2>
               <p className="text-xs text-slate-500">{a.partners_hint}</p>
             </div>
+
             {data.statements.unassigned.count > 0 && (
               <Alert tone="warning">
-                <b>
-                  {a.unassigned_title}: <span className="num">{data.statements.unassigned.count}</span> (
-                  <span className="num">{formatMoney(data.statements.unassigned.net)}</span>)
-                </b>{" "}
-                — {a.unassigned_desc}{" "}
-                <Link href="/payments?tab=all" className="font-semibold underline">
-                  {a.go_assign}
-                </Link>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <b>
+                      {a.unassigned_title}: <span className="num">{data.statements.unassigned.count}</span> (
+                      <span className="num">{formatMoney(data.statements.unassigned.net)}</span>)
+                    </b>{" "}
+                    — {a.unassigned_desc}
+                  </div>
+                  <Link
+                    href="/payments?tab=all"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-amber-100/90 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-200 transition"
+                  >
+                    <span>{a.go_assign}</span>
+                    <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
+                  </Link>
+                </div>
               </Alert>
             )}
+
             <div className="grid gap-4 md:grid-cols-2">
-              {data.statements.partners.map((p) => (
-                <Card key={p.accountId} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand">
-                        <UserRound className="h-4 w-4" />
+              {data.statements.partners.map((p) => {
+                const isSettled = p.remaining === 0;
+                const isOverpaid = p.remaining < 0;
+
+                return (
+                  <Card key={p.accountId} className="space-y-4 hover:border-slate-300 transition duration-150">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-50 to-brand-100 text-brand font-bold text-base shadow-2xs">
+                          {p.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-extrabold text-slate-900 text-base">{p.name}</div>
+                          <div className="num text-xs text-slate-400 mt-0.5">
+                            {p.paymentsCount} {a.payments_n}
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-bold text-slate-900">{p.name}</div>
-                        <div className="num text-xs text-slate-400">
-                          {p.paymentsCount} {a.payments_n}
+
+                      <div className="text-end">
+                        <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{a.remaining}</div>
+                        <div className="text-lg font-extrabold">
+                          <Money fils={p.remaining} strong signColor />
+                        </div>
+                        <div className="mt-1">
+                          {isSettled ? (
+                            <Badge tone="green" dot>
+                              {a.settled}
+                            </Badge>
+                          ) : isOverpaid ? (
+                            <Badge tone="red" dot>
+                              {a.over_received}
+                            </Badge>
+                          ) : (
+                            <Badge tone="yellow" dot>
+                              {a.remaining}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
-                    <div className="text-end">
-                      <div className="text-[11px] text-slate-500">{a.remaining}</div>
-                      <div className="text-lg">
-                        <Money fils={p.remaining} strong signColor />
+
+                    <dl className="space-y-2 border-t border-slate-100 pt-3 text-xs">
+                      <Row label={a.from_payments} fils={p.entitledFromPayments} />
+                      {p.expensesPaid > 0 && <Row label={a.expenses_paid} fils={p.expensesPaid} />}
+                      {p.paidIn > 0 && <Row label={a.paid_in} fils={p.paidIn} />}
+                      <Row label={a.total_due} fils={p.due} strong />
+                      <Row label={a.received} fils={-p.received} />
+                      <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-2 text-sm">
+                        <dt className="font-bold text-slate-900">{a.remaining}</dt>
+                        <dd>
+                          <Money fils={p.remaining} strong signColor />
+                        </dd>
                       </div>
-                      <div className={`text-[11px] font-semibold ${p.remaining < 0 ? "text-rose-600" : "text-slate-400"}`}>
-                        {p.remaining < 0 ? a.over_received : p.remaining === 0 ? a.settled : ""}
-                      </div>
-                    </div>
-                  </div>
-                  <dl className="space-y-1.5 border-t border-slate-100 pt-3 text-sm">
-                    <Row label={a.from_payments} fils={p.entitledFromPayments} />
-                    {p.expensesPaid > 0 && <Row label={a.expenses_paid} fils={p.expensesPaid} />}
-                    {p.paidIn > 0 && <Row label={a.paid_in} fils={p.paidIn} />}
-                    <Row label={a.total_due} fils={p.due} strong />
-                    <Row label={a.received} fils={-p.received} />
-                    <div className="flex justify-between border-t border-dashed border-slate-200 pt-1.5">
-                      <dt className="font-bold text-slate-800">{a.remaining}</dt>
-                      <dd>
-                        <Money fils={p.remaining} strong signColor />
-                      </dd>
-                    </div>
-                  </dl>
-                </Card>
-              ))}
+                    </dl>
+                  </Card>
+                );
+              })}
             </div>
           </section>
 
+          {/* Balances and Expenses by Category Grid */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Balances */}
-            <Card className="space-y-3">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                <Building2 className="h-4 w-4 text-slate-500" /> {a.balances_title}
-              </h2>
+            {/* Account Balances Card */}
+            <Card className="space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <Building2 className="h-4 w-4 text-slate-500" />
+                <h2 className="text-sm font-bold text-slate-900">{a.balances_title}</h2>
+              </div>
+
               <ul className="divide-y divide-slate-100">
                 {data.balances.map((b) => {
                   const diff = b.statementBalanceFils != null ? b.balance - b.statementBalanceFils : null;
                   return (
-                    <li key={b.id} className="flex items-start justify-between gap-3 py-2.5 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-400">{ICONS[b.kind]}</span>
+                    <li key={b.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 shadow-2xs">
+                          {ICONS[b.kind]}
+                        </div>
                         <div>
-                          <div className="font-semibold text-slate-800">{b.name}</div>
-                          <div className="text-[11px] text-slate-400">{accountKindLabel(b.kind)}</div>
+                          <div className="font-bold text-slate-900">{b.name}</div>
+                          <div className="text-[11px] text-slate-400 font-medium">{accountKindLabel(b.kind)}</div>
                         </div>
                       </div>
+
                       <div className="text-end">
                         <Money fils={b.balance} strong signColor={b.kind === "partner"} />
                         {diff !== null && (
-                          <div className="text-[11px] text-slate-500">
-                            {a.statement_balance}: <span className="num">{formatMoney(b.statementBalanceFils!)}</span>
-                            {" · "}
+                          <div className="mt-0.5 text-[11px] text-slate-500 flex items-center justify-end gap-1">
+                            <span>{a.statement_balance}:</span>
+                            <span className="num font-semibold">{formatMoney(b.statementBalanceFils!)}</span>
+                            <span>·</span>
                             {diff === 0 ? (
-                              <span className="text-emerald-600">{a.matches_statement}</span>
+                              <span className="inline-flex items-center gap-0.5 font-bold text-emerald-600">
+                                <CheckCircle2 className="h-3 w-3" />
+                                {a.matches_statement}
+                              </span>
                             ) : (
-                              <span className="text-rose-600">
+                              <span className="font-bold text-rose-600">
                                 {a.difference}: <span className="num">{formatMoney(diff)}</span>
                               </span>
                             )}
@@ -245,34 +343,46 @@ export default function AccountingOverview() {
                   );
                 })}
               </ul>
-              <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                <span className="flex items-center gap-1.5">
-                  <Banknote className="h-3.5 w-3.5" /> {a.withdrawals}
+
+              <div className="flex items-center justify-between rounded-xl bg-slate-50/80 p-3 text-xs text-slate-600 border border-slate-100">
+                <span className="flex items-center gap-1.5 font-semibold">
+                  <Banknote className="h-4 w-4 text-slate-500" /> {a.withdrawals}
                 </span>
                 <Money fils={r.gatewayWithdrawals} strong />
               </div>
             </Card>
 
-            {/* Expenses by category */}
-            <Card className="space-y-3">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                <Receipt className="h-4 w-4 text-slate-500" /> {a.expenses_by_cat}
-              </h2>
+            {/* Expenses by Category Card */}
+            <Card className="space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <Receipt className="h-4 w-4 text-slate-500" />
+                <h2 className="text-sm font-bold text-slate-900">{a.expenses_by_cat}</h2>
+              </div>
+
               {r.expensesByCategory.length === 0 ? (
-                <div className="py-6 text-center text-xs text-slate-400">{a.no_expenses}</div>
+                <div className="py-12 text-center text-xs text-slate-400 font-medium">{a.no_expenses}</div>
               ) : (
-                <ul className="space-y-2">
-                  {r.expensesByCategory.map((c) => (
-                    <li key={c.category} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-700">{categoryLabel(c.category)}</span>
-                        <Money fils={c.amount} />
-                      </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-amber-400" style={{ width: `${Math.round((c.amount / r.expenses) * 100)}%` }} />
-                      </div>
-                    </li>
-                  ))}
+                <ul className="space-y-3">
+                  {r.expensesByCategory.map((c) => {
+                    const pct = r.expenses > 0 ? Math.round((c.amount / r.expenses) * 100) : 0;
+                    return (
+                      <li key={c.category} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-800">{categoryLabel(c.category)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="num text-slate-400 font-medium">{pct}%</span>
+                            <Money fils={c.amount} strong />
+                          </div>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className={`h-full rounded-full bg-gradient-to-r ${CAT_GRADIENTS[c.category] || "from-amber-400 to-amber-500"} transition-all duration-300`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </Card>
@@ -285,8 +395,8 @@ export default function AccountingOverview() {
 
 function Row({ label, fils, strong }: { label: string; fils: number; strong?: boolean }) {
   return (
-    <div className="flex justify-between">
-      <dt className={strong ? "font-semibold text-slate-800" : "text-slate-500"}>{label}</dt>
+    <div className="flex items-center justify-between">
+      <dt className={strong ? "font-bold text-slate-800" : "text-slate-500 font-medium"}>{label}</dt>
       <dd>
         <Money fils={fils} strong={strong} />
       </dd>

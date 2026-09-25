@@ -791,14 +791,33 @@ export function useI18n() {
   return useContext(I18nContext);
 }
 
-export function LanguageSwitcher({ className = "" }: { className?: string }) {
+export function LanguageSwitcher({
+  className = "",
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   const { lang, toggleLang } = useI18n();
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={toggleLang}
+        className={`flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 shadow-2xs transition hover:border-brand hover:bg-brand-50 hover:text-brand active:scale-95 ${className}`}
+        title={lang === "ar" ? "Switch to English" : "التبديل إلى العربية"}
+      >
+        <span>{lang === "ar" ? "EN" : "AR"}</span>
+      </button>
+    );
+  }
 
   return (
     <button
       type="button"
       onClick={toggleLang}
-      className={`inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50 hover:text-brand ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:border-slate-300 hover:bg-slate-50 hover:text-brand ${className}`}
       title={lang === "ar" ? "Switch to English" : "التبديل إلى العربية"}
     >
       <span className="text-sm">🌐</span>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Menu,
@@ -77,7 +78,9 @@ export function DashboardShell({
             <Menu className="h-5 w-5" />
           </button>
           <Link href="/payments" className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-xs text-white font-bold">⚡</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-2xs border border-slate-100 p-0.5">
+              <Image src="/logo.png" alt="Ziina ↔ Zoho" width={24} height={24} className="h-full w-full object-contain" />
+            </div>
             <span className="font-bold text-slate-900 text-sm">Ziina ↔ Zoho</span>
           </Link>
         </div>
@@ -95,7 +98,7 @@ export function DashboardShell({
 
       {/* Mobile Slide-over Drawer */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
+        <div className="fixed inset-0 z-50 flex md:hidden justify-start">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
@@ -104,15 +107,13 @@ export function DashboardShell({
 
           {/* Drawer Panel */}
           <div
-            className={`relative flex w-4/5 max-w-xs flex-col bg-white shadow-2xl transition-transform ${
-              dir === "rtl" ? "mr-auto" : "ml-auto"
-            }`}
+            className="relative flex w-4/5 max-w-xs flex-col bg-white shadow-2xl z-10 transition-transform duration-200"
           >
             {/* Header */}
             <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand text-white font-bold text-sm">
-                  ⚡
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white shadow-2xs border border-slate-100 p-1">
+                  <Image src="/logo.png" alt="Ziina ↔ Zoho" width={28} height={28} className="h-full w-full object-contain" />
                 </div>
                 <span className="font-bold text-slate-900 text-base">Ziina ↔ Zoho</span>
               </div>

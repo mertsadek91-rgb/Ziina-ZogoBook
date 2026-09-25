@@ -45,6 +45,7 @@ export function AccountSelect({
   kinds,
   placeholder,
   disabled,
+  className,
 }: {
   accounts: Account[];
   value: string;
@@ -52,11 +53,12 @@ export function AccountSelect({
   kinds?: string[];
   placeholder?: string;
   disabled?: boolean;
+  className?: string;
 }) {
   const { accountKindLabel } = useAcc();
   const list = kinds ? accounts.filter((x) => kinds.includes(x.kind)) : accounts;
   return (
-    <select value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+    <select value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} className={className}>
       <option value="">{placeholder ?? "—"}</option>
       {list.map((x) => (
         <option key={x.id} value={x.id}>
@@ -74,12 +76,14 @@ export function PartnerSelect({
   partners,
   disabled,
   compact,
+  className,
 }: {
   value: string;
   onChange: (id: string) => void;
   partners?: { id: string; name: string }[];
   disabled?: boolean;
   compact?: boolean;
+  className?: string;
 }) {
   const { a } = useAcc();
   const [own, setOwn] = useState<{ id: string; name: string }[]>([]);
@@ -95,7 +99,7 @@ export function PartnerSelect({
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className={compact ? "!py-1 !px-2 !text-xs !rounded-lg" : ""}
+      className={`${compact ? "!py-1 !px-2 !text-xs !rounded-lg" : ""} ${className ?? ""}`.trim()}
     >
       <option value="">{a.no_partner}</option>
       {list.map((x) => (

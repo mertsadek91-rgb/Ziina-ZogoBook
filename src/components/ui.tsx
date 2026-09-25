@@ -148,6 +148,7 @@ export function KpiCard({
   icon,
   badge,
   active = false,
+  className = "",
   onClick,
 }: {
   title: string;
@@ -156,29 +157,30 @@ export function KpiCard({
   icon: ReactNode;
   badge?: ReactNode;
   active?: boolean;
+  className?: string;
   onClick?: () => void;
 }) {
   const Component = onClick ? "button" : "div";
   return (
     <Component
       onClick={onClick}
-      className={`group relative flex w-full flex-col justify-between rounded-2xl border p-4 text-start transition duration-150 ${
+      className={`group relative flex w-full flex-col justify-between overflow-hidden rounded-2xl border p-4 text-start transition-all duration-200 ${
         active
           ? "border-brand bg-brand-50/40 ring-2 ring-brand/20 shadow-xs"
-          : "border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-xs"
-      }`}
+          : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs"
+      } ${onClick ? "cursor-pointer active:scale-[0.99]" : ""} ${className}`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-slate-500 group-hover:text-slate-700">{title}</span>
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 text-slate-600 transition group-hover:bg-brand/10 group-hover:text-brand">
+        <span className="text-xs font-semibold text-slate-500 transition group-hover:text-slate-800">{title}</span>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-600 transition duration-200 group-hover:bg-brand/10 group-hover:text-brand shadow-2xs">
           {icon}
         </div>
       </div>
       <div className="mt-3 flex items-baseline justify-between gap-2">
-        <div className="num text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{value}</div>
+        <div className="num text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">{value}</div>
         {badge}
       </div>
-      {subtext && <div className="num mt-1 text-xs text-slate-400">{subtext}</div>}
+      {subtext && <div className="num mt-1 text-[11px] font-medium text-slate-400">{subtext}</div>}
     </Component>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   CreditCard,
@@ -44,8 +45,8 @@ export function Sidebar({ collapsed, onToggleCollapse, testMode }: SidebarProps)
       {/* Brand Header */}
       <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-4">
         <Link href="/payments" className="flex items-center gap-3 overflow-hidden">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-brand to-brand-light text-white shadow-xs font-bold text-lg">
-            ⚡
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-2xs border border-slate-100 p-1">
+            <Image src="/logo.png" alt="Ziina ↔ Zoho" width={36} height={36} className="h-full w-full object-contain" priority />
           </div>
           {!collapsed && (
             <div className="flex flex-col truncate">
@@ -113,8 +114,8 @@ export function Sidebar({ collapsed, onToggleCollapse, testMode }: SidebarProps)
 
         {/* Language Switcher */}
         <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
-          {!collapsed && <span className="text-xs font-medium text-slate-500">{t.details}</span>}
-          <LanguageSwitcher className="w-auto" />
+          {!collapsed && <span className="text-xs font-medium text-slate-500">{dir === "rtl" ? "اللغة" : "Language"}</span>}
+          <LanguageSwitcher compact={collapsed} />
         </div>
 
         {/* Logout */}

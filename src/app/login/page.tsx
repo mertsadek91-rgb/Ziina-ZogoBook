@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Lock, ArrowRight, ArrowLeft } from "lucide-react";
 import { Alert, Button } from "@/components/ui";
@@ -39,8 +40,8 @@ function LoginForm() {
 
       <form onSubmit={submit} className="space-y-5 rounded-3xl border border-slate-200/90 bg-white p-7 shadow-lg">
         <div className="text-center space-y-2">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand to-brand-light text-white shadow-md text-xl font-bold">
-            ⚡
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm border border-slate-100 p-2">
+            <Image src="/logo.png" alt="Ziina ↔ Zoho" width={56} height={56} className="h-full w-full object-contain" priority />
           </div>
           <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Ziina ↔ Zoho</h1>
           <p className="text-xs text-slate-500">{t.login_welcome}</p>

@@ -6,6 +6,7 @@
   --color-brand-light: #795ef7;
   --color-brand-50: #f5f3ff;
   --color-brand-100: #ede9fe;
+  --color-brand-200: #ddd6fe;
   --font-sans: var(--font-latin), var(--font-arabic), system-ui, -apple-system, sans-serif;
 }
 
@@ -20,6 +21,8 @@ body {
   background-color: #f8fafc;
   color: #0f172a;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Force tabular alignment for numbers, monetary values, and dates regardless of language direction */
@@ -49,9 +52,7 @@ body {
   background: #94a3b8;
 }
 
-/* Modern inputs & interactive elements.
-   Kept in the base layer so utilities on an element (ps-9 for icon inputs, w-auto on
-   checkboxes, …) can override these defaults — unlayered rules would always win. */
+/* Modern inputs & interactive elements */
 @layer base {
   input,
   select,
@@ -66,7 +67,24 @@ body {
 
 /* Glass effect utilities */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Subtle card hover animation */
+.card-hover {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.02);
+  border-color: #cbd5e1;
+}
+
+/* Radial background accents */
+.bg-mesh {
+  background-image: radial-gradient(at 0% 0%, rgba(91, 61, 245, 0.04) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(121, 94, 247, 0.03) 0px, transparent 50%);
 }
