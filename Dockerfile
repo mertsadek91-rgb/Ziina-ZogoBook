@@ -5,7 +5,9 @@ FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
-RUN npm ci
+# `npm ci` can reject the lockfile on Linux because of optional wasm packages bundled by
+# Tailwind (@emnapi/*, a known npm issue); fall back to `npm install`, which keeps locked versions.
+RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
 FROM base AS build
 WORKDIR /app
