@@ -150,7 +150,7 @@ export function PaymentActions({ payment }: { payment: P }) {
             <span>{payment.archived ? t.unhide_payment_btn : t.hide_payment_btn}</span>
           </Button>
 
-          {payment.source !== "csv" && (
+          {payment.source !== "csv" && payment.source !== "stripe" && (
             <Button
               variant="secondary"
               size="sm"

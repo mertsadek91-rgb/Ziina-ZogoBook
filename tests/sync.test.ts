@@ -116,6 +116,7 @@ function seed(extra: Row = {}) {
     feeFils: 300,
     status: "completed",
     source: "api",
+    gateway: "ziina", // DB default for existing payments
     message: "Consulting",
     customerName: "Ahmed Ali",
     customerEmail: "ahmed@x.com",

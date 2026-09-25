@@ -48,6 +48,11 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
     lastError: p.lastError,
     liveMode: process.env.ZIINA_TEST_MODE !== "true",
     partnerAccountId: p.partnerAccountId,
+    gateway: p.gateway,
+    amountRefundedFils: p.amountRefundedFils,
+    stripeInvoiceNumber: p.stripeInvoiceNumber,
+    stripeInvoiceUrl: p.stripeInvoiceUrl,
+    stripeInvoicePdf: p.stripeInvoicePdf,
     logs: p.logs.map((l) => ({
       id: l.id,
       step: l.step,

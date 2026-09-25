@@ -68,6 +68,11 @@ interface PaymentData {
   logs: LogItem[];
   liveMode: boolean;
   partnerAccountId: string | null;
+  gateway: string;
+  amountRefundedFils: number;
+  stripeInvoiceNumber: string | null;
+  stripeInvoiceUrl: string | null;
+  stripeInvoicePdf: string | null;
 }
 
 export function PaymentDetailClient({ payment }: { payment: PaymentData }) {
@@ -99,8 +104,12 @@ export function PaymentDetailClient({ payment }: { payment: PaymentData }) {
     return (t[key] as string) || status;
   };
 
-  const sourceLabel =
-    payment.source === "csv"
+  const isStripe = payment.gateway === "stripe";
+  const sourceLabel = isStripe
+    ? lang === "ar"
+      ? "مزامنة من Stripe"
+      : "Synced from Stripe"
+    : payment.source === "csv"
       ? t.source_csv
       : payment.source === "webhook"
         ? t.source_webhook
@@ -112,11 +121,24 @@ export function PaymentDetailClient({ payment }: { payment: PaymentData }) {
       ? ([[t.customer_paid, <span key="2" className="num text-slate-700">{formatMoney(payment.originalAmountFils, payment.originalCurrency)}</span>]] as [string, React.ReactNode, string?][])
       : []),
     [t.tip, <span key="3" className="num text-slate-700">{formatMoney(payment.tipFils, payment.currency)}</span>],
-    [t.ziina_fees, <span key="4" className="num text-slate-700">{formatMoney(payment.feeFils, payment.currency)}</span>],
+    [
+      isStripe ? (lang === "ar" ? "رسوم Stripe" : "Stripe fees") : t.ziina_fees,
+      <span key="4" className="num text-slate-700">{formatMoney(payment.feeFils, payment.currency)}</span>,
+    ],
+    ...(payment.amountRefundedFils > 0
+      ? ([
+          [
+            lang === "ar" ? "المسترد" : "Refunded",
+            <span key="4r" className="num font-semibold text-rose-600">
+              −{formatMoney(payment.amountRefundedFils, payment.currency)}
+            </span>,
+          ],
+        ] as [string, React.ReactNode, string?][])
+      : []),
     [
       t.net_payout,
       <span key="5" className="num font-bold text-emerald-700">
-        {formatMoney(payment.amountFils + payment.tipFils - payment.feeFils, payment.currency)}
+        {formatMoney(payment.amountFils + payment.tipFils - payment.feeFils - payment.amountRefundedFils, payment.currency)}
       </span>,
     ],
     [t.order_number, payment.orderNumber ? <span key="6" className="num font-bold text-slate-800">#{payment.orderNumber}</span> : "—", payment.orderNumber ?? undefined],
@@ -127,8 +149,28 @@ export function PaymentDetailClient({ payment }: { payment: PaymentData }) {
       t.card_label,
       payment.cardBrand ? <span key="9" className="num text-slate-700">{`${payment.cardBrand} •••• ${payment.cardLast4 ?? ""}`}</span> : "—",
     ],
+    ...(isStripe && (payment.stripeInvoiceNumber || payment.stripeInvoiceUrl)
+      ? ([
+          [
+            lang === "ar" ? "فاتورة Stripe" : "Stripe invoice",
+            <span key="si" className="inline-flex items-center gap-2">
+              <span className="num font-bold text-slate-800">{payment.stripeInvoiceNumber ?? "—"}</span>
+              {payment.stripeInvoiceUrl && (
+                <a href={payment.stripeInvoiceUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+                  {lang === "ar" ? "عرض" : "View"}
+                </a>
+              )}
+              {payment.stripeInvoicePdf && (
+                <a href={payment.stripeInvoicePdf} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">
+                  PDF
+                </a>
+              )}
+            </span>,
+          ],
+        ] as [string, React.ReactNode, string?][])
+      : []),
     [
-      t.ziina_id,
+      isStripe ? "Stripe ID" : t.ziina_id,
       <span key="10" className="num text-xs text-slate-500 font-mono select-all">
         {payment.ziinaIntentId}
       </span>,

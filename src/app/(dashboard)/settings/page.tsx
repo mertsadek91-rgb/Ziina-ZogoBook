@@ -25,6 +25,7 @@ interface SettingsResponse {
   testMode: boolean;
   ziina: { ok: boolean; name?: string; error?: string };
   zoho: { ok: boolean; name?: string; error?: string };
+  stripe?: { ok: boolean; configured: boolean; livemode?: boolean; currency?: string | null; lastSync?: string | null; error?: string };
 }
 
 export default function SettingsPage() {
@@ -138,6 +139,29 @@ export default function SettingsPage() {
                   </Badge>
                 ) : (
                   <Badge tone="red">{data.zoho.error || t.disconnected}</Badge>
+                )}
+              </div>
+
+              {/* Stripe Connection (read-only) */}
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+                <div>
+                  <span className="text-xs font-bold text-slate-800">Stripe</span>
+                  {data.stripe?.ok && data.stripe.lastSync && (
+                    <div className="num text-[10px] text-slate-400">
+                      {lang === "ar" ? "آخر مزامنة" : "Last sync"}:{" "}
+                      {new Date(Number(data.stripe.lastSync) * 1000).toLocaleString("en-GB", { timeZone: "Asia/Dubai" })}
+                    </div>
+                  )}
+                </div>
+                {!data.stripe?.configured ? (
+                  <Badge tone="gray">{lang === "ar" ? "غير مفعّل — أضف STRIPE_SECRET_KEY" : "Not set — add STRIPE_SECRET_KEY"}</Badge>
+                ) : data.stripe.ok ? (
+                  <Badge tone="green" dot pulse>
+                    {t.connected} ({data.stripe.livemode ? "live" : "test"}
+                    {data.stripe.currency ? ` · ${data.stripe.currency}` : ""})
+                  </Badge>
+                ) : (
+                  <Badge tone="red">{data.stripe.error || t.disconnected}</Badge>
                 )}
               </div>
             </div>

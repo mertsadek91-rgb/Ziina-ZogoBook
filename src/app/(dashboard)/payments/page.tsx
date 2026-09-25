@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { TABS, tabOf, whereForTab, type Tab } from "@/lib/status";
 import { PaymentsView } from "./PaymentsView";
 import { listAccounts } from "@/lib/ledger";
+import { stripeConfigured } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,7 @@ export default async function PaymentsPage({
     candidateCount: p.zohoCandidateCount,
     checkedAt: p.zohoCheckedAt?.toISOString() ?? null,
     partnerAccountId: p.partnerAccountId,
+    gateway: p.gateway,
   }));
 
   const partners = (await listAccounts()).filter((a) => a.kind === "partner").map((a) => ({ id: a.id, name: a.name }));
@@ -102,6 +104,7 @@ export default async function PaymentsPage({
       counts={counts}
       visibleTestCount={visibleTestCount}
       partners={partners}
+      stripeEnabled={stripeConfigured()}
       payments={serializedPayments}
     />
   );

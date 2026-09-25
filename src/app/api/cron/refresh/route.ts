@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { refreshFromZiina } from "@/lib/sync";
 import { reconcile } from "@/lib/reconcile";
+import { syncStripe } from "@/lib/stripe-sync";
 
 /**
  * Safety net for missed webhooks: re-fetch non-final intents from the last 30 days.
@@ -16,6 +17,7 @@ async function handler(req: Request) {
   const pending = await prisma.payment.findMany({
     where: {
       source: { not: "csv" },
+      gateway: "ziina",
       archived: false,
       status: { in: ["requires_payment_instrument", "requires_user_action", "pending"] },
       createdAt: { gte: new Date(Date.now() - 30 * 86400_000) },
@@ -32,6 +34,14 @@ async function handler(req: Request) {
       errors.push(`${p.ziinaIntentId}: ${e instanceof Error ? e.message : e}`);
     }
   }
+  // Pull new Stripe payments / refunds (read-only), when a key is configured.
+  let stripe: unknown = null;
+  try {
+    stripe = await syncStripe();
+  } catch (e) {
+    errors.push(`stripe: ${e instanceof Error ? e.message : e}`);
+  }
+
   // Then check completed payments against Zoho (catches invoices/payments added or deleted there manually).
   let zoho: unknown = null;
   try {
@@ -39,7 +49,7 @@ async function handler(req: Request) {
   } catch (e) {
     errors.push(`zoho reconcile: ${e instanceof Error ? e.message : e}`);
   }
-  return NextResponse.json({ checked: pending.length, updated, zoho, errors });
+  return NextResponse.json({ checked: pending.length, updated, stripe, zoho, errors });
 }
 
 export { handler as GET, handler as POST };

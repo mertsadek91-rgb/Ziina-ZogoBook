@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSetting, setSetting } from "@/lib/db";
 import { registerWebhook, verifyToken } from "@/lib/ziina";
 import { listOrganizations } from "@/lib/zoho";
+import { stripeBalance, stripeConfigured } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { jsonError } from "@/lib/api";
 
@@ -12,7 +13,11 @@ export async function GET() {
   const settings: Record<string, string | null> = {};
   for (const k of KEYS) settings[k] = await getSetting(k);
 
-  const [ziina, zoho] = await Promise.allSettled([verifyToken(), listOrganizations()]);
+  const [ziina, zoho, stripe] = await Promise.allSettled([
+    verifyToken(),
+    listOrganizations(),
+    stripeConfigured() ? stripeBalance() : Promise.resolve(null),
+  ]);
   const orgId = process.env.ZOHO_ORG_ID;
   return NextResponse.json({
     settings,
@@ -27,6 +32,21 @@ export async function GET() {
       zoho.status === "fulfilled"
         ? { ok: true, name: zoho.value.find((o) => o.organization_id === orgId)?.name ?? `org ${orgId}` }
         : { ok: false, error: String((zoho.reason as Error)?.message ?? zoho.reason) },
+    stripe: !stripeConfigured()
+      ? { ok: false, configured: false }
+      : stripe.status === "fulfilled" && stripe.value
+        ? {
+            ok: true,
+            configured: true,
+            livemode: stripe.value.livemode,
+            currency: stripe.value.available[0]?.currency?.toUpperCase() ?? null,
+            lastSync: await getSetting("stripe_synced_until"),
+          }
+        : {
+            ok: false,
+            configured: true,
+            error: stripe.status === "rejected" ? String((stripe.reason as Error)?.message ?? stripe.reason) : "—",
+          },
   });
 }
 

@@ -20,6 +20,12 @@ model Payment {
   feeFils        Int       @default(0)
   tipFils        Int       @default(0)
   settledFils    Int?
+  amountRefundedFils Int     @default(0) // refunded part, in the settlement currency (Stripe)
+  // Stripe invoice linked to the charge (Stripe Billing)
+  stripeInvoiceId     String? @db.VarChar(60)
+  stripeInvoiceNumber String? @db.VarChar(60)
+  stripeInvoiceUrl    String? @db.Text
+  stripeInvoicePdf    String? @db.Text
   // What the customer paid in their own currency (e.g. 170.90 SAR); amountFils is always the settled AED amount.
   originalAmountFils Int?
   originalCurrency   String?   @db.VarChar(10)
@@ -34,7 +40,9 @@ model Payment {
   notes         String? @db.Text
   orderNumber   String? @db.VarChar(40) // Ziina app order number (entered manually; not exposed by the Ziina API)
 
-  source   String  @default("api") @db.VarChar(20) // api | csv | webhook
+  source   String  @default("api") @db.VarChar(20) // api | csv | webhook | stripe
+  // Payment gateway: "ziina" (ziinaIntentId = payment intent id) or "stripe" (ziinaIntentId = charge id)
+  gateway  String  @default("ziina") @db.VarChar(20)
   test     Boolean @default(false)
   archived Boolean @default(false) // hidden from lists, totals and Zoho checks (e.g. test payments)
 
@@ -69,6 +77,7 @@ model Payment {
   @@index([createdAt])
   @@index([archived])
   @@index([partnerAccountId])
+  @@index([gateway])
 }
 
 model SyncLog {

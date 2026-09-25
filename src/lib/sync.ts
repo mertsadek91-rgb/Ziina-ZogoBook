@@ -47,7 +47,7 @@ function toDate(d: Date): string {
 
 /** Pull the latest state of a payment from Ziina and store it. */
 export async function refreshFromZiina(payment: Payment): Promise<Payment> {
-  if (payment.source === "csv") return payment;
+  if (payment.source === "csv" || payment.gateway !== "ziina") return payment;
   const pi = await getPaymentIntent(payment.ziinaIntentId);
   const { createdAtZiina, ...fields } = intentToPaymentFields(pi);
   void createdAtZiina;
@@ -155,7 +155,7 @@ export async function syncToZoho(paymentId: string, opts: SyncOptions): Promise<
           itemId: opts.itemId,
           rate: amount,
           description: p.message,
-          notes: zohoNote(reference, p.orderNumber),
+          notes: zohoNote(reference, p.orderNumber, p.gateway),
         });
         await zoho.markInvoiceSent(invoice.invoice_id);
         await log(p.id, step, true, `تم إنشاء الفاتورة: ${invoice.invoice_number}`);
@@ -189,7 +189,7 @@ export async function syncToZoho(paymentId: string, opts: SyncOptions): Promise<
           date,
           referenceNumber: reference,
           accountId: await getSetting("zoho_deposit_account_id"),
-          description: zohoNote(reference, p.orderNumber),
+          description: zohoNote(reference, p.orderNumber, p.gateway),
         });
         await log(p.id, step, true, `تم تسجيل الدفعة: ${payment.payment_id}`);
       }

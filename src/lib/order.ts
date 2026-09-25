@@ -5,6 +5,7 @@ export function normalizeOrderNumber(v?: string | null): string | null {
 }
 
 /** Text written into the Zoho invoice notes / payment description. */
-export function zohoNote(ziinaIntentId: string, orderNumber?: string | null): string {
-  return orderNumber ? `Ziina Order #${orderNumber}\nZiina payment ${ziinaIntentId}` : `Ziina payment ${ziinaIntentId}`;
+export function zohoNote(externalId: string, orderNumber?: string | null, gateway: string = "ziina"): string {
+  const g = gateway === "stripe" ? "Stripe" : "Ziina";
+  return orderNumber ? `${g} Order #${orderNumber}\n${g} payment ${externalId}` : `${g} payment ${externalId}`;
 }

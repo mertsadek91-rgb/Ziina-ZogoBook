@@ -7,6 +7,7 @@ const DEFAULT_ACCOUNTS = [
   { key: "wio", name: "Wio Bank", kind: "bank", sortOrder: 2 },
   { key: "partner_mert", name: "Mert Sadek", kind: "partner", sortOrder: 3 },
   { key: "partner_nawras", name: "Nawras Tutunji", kind: "partner", sortOrder: 4 },
+  { key: "stripe", name: "Stripe", kind: "gateway", sortOrder: 2 },
 ];
 
 export async function ensureDefaultAccounts() {
@@ -28,13 +29,23 @@ export async function listAccounts() {
 async function loadSales(): Promise<SaleLite[]> {
   const rows = await prisma.payment.findMany({
     where: { status: "completed", currency: "AED", test: false, archived: false },
-    select: { paidAt: true, createdAt: true, amountFils: true, tipFils: true, feeFils: true, partnerAccountId: true },
+    select: {
+      paidAt: true,
+      createdAt: true,
+      amountFils: true,
+      tipFils: true,
+      feeFils: true,
+      amountRefundedFils: true,
+      partnerAccountId: true,
+      gateway: true,
+    },
   });
   return rows.map((r) => ({
     date: r.paidAt ?? r.createdAt,
-    grossFils: r.amountFils + r.tipFils,
+    grossFils: r.amountFils + r.tipFils - r.amountRefundedFils,
     feeFils: r.feeFils,
     partnerAccountId: r.partnerAccountId,
+    gateway: r.gateway,
   }));
 }
 

@@ -39,6 +39,14 @@ npm test
 5. ضع `ZOHO_REFRESH_TOKEN` و`ZOHO_ORG_ID` (من Zoho Books ← Settings ← Organization Profile) و`ZOHO_DC`.
 6. في الإعدادات داخل التطبيق اختر الحساب الذي تُودَع فيه دفعات Ziina (يُنصح بحساب باسم Ziina).
 
+### Stripe (اختياري، قراءة فقط)
+1. في Stripe: **Developers → API keys → Create restricted key**.
+2. صلاحيات **Read** فقط على: Balance, Balance transactions, Charges, Customers, Invoices (والباقي None).
+3. ضع المفتاح (`rk_live_...`) في `STRIPE_SECRET_KEY` في Coolify ثم Redeploy.
+4. أول مزامنة تجلب كل التاريخ، وبعدها كل 10 دقائق مع المهمة المجدولة (أو زر **مزامنة Stripe** في صفحة الدفعات).
+
+دفعات Stripe تظهر في نفس القائمة بشارة **Stripe** وبالمبلغ المسوّى بالدرهم ورسوم Stripe، وتُصدر لها فواتير Zoho وتُخصص للشركاء كدفعات Ziina. فواتير Stripe في صفحة **فواتير Stripe**. تحويلات Stripe إلى Wio (من Network International) تُصنف تلقائيًا تحويلًا من حساب Stripe.
+
 ## النشر على Coolify (من GitHub)
 1. **قاعدة البيانات**: MySQL 8 داخل Coolify (Access: Private).
 2. **New Resource ← Application ← GitHub** واختر المستودع، و**Build Pack: Dockerfile**، والمنفذ **3000**.

@@ -66,6 +66,7 @@ export default function ImportBankPage() {
     const ctx = {
       bankAccountId: bankId,
       gatewayAccountId: gateway?.id,
+      stripeAccountId: accounts.find((x) => x.key === "stripe")?.id,
       partners: partners.map((p) => ({ id: p.id, name: p.name })),
     };
     setRows(parsed.lines.map((l) => ({ ...l, ...suggestBooking(l, ctx) })));

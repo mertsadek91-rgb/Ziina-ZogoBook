@@ -14,6 +14,7 @@ import {
   Settings,
   ShieldAlert,
   Calculator,
+  FileText,
 } from "lucide-react";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 import { Sidebar } from "./Sidebar";
@@ -58,6 +59,7 @@ export function DashboardShell({
     { href: "/quick-link", label: t.nav_quick_link, icon: Zap, match: (p: string) => p === "/quick-link" },
     { href: "/import", label: t.nav_import, icon: FileSpreadsheet, match: (p: string) => p === "/import" },
     { href: "/accounting", label: t.nav_accounting, icon: Calculator, match: (p: string) => p.startsWith("/accounting") },
+    { href: "/stripe-invoices", label: t.nav_stripe_invoices, icon: FileText, match: (p: string) => p.startsWith("/stripe-invoices") },
     { href: "/settings", label: t.nav_settings, icon: Settings, match: (p: string) => p === "/settings" },
   ];
 

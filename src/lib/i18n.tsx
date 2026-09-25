@@ -16,6 +16,7 @@ export interface Translations {
   nav_import: string;
   nav_settings: string;
   nav_accounting: string;
+  nav_stripe_invoices: string;
   nav_logout: string;
   nav_collapse: string;
   nav_expand: string;
@@ -247,6 +248,7 @@ export interface Translations {
   ziina_completed: string;
   ziina_failed: string;
   ziina_canceled: string;
+  ziina_refunded: string;
 
   zoho_not_synced: string;
   zoho_contact_ready: string;
@@ -265,6 +267,7 @@ const AR_TRANSLATIONS: Translations = {
   nav_import: "استيراد",
   nav_settings: "الإعدادات",
   nav_accounting: "المحاسبة",
+  nav_stripe_invoices: "فواتير Stripe",
   nav_logout: "خروج",
   nav_collapse: "طي القائمة",
   nav_expand: "توسيع القائمة",
@@ -482,6 +485,7 @@ const AR_TRANSLATIONS: Translations = {
   ziina_completed: "مدفوع بنجاح",
   ziina_failed: "فشل الدفع",
   ziina_canceled: "ملغي",
+  ziina_refunded: "مسترد",
 
   zoho_not_synced: "لم تصدر فاتورة",
   zoho_contact_ready: "العميل جاهز",
@@ -500,6 +504,7 @@ const EN_TRANSLATIONS: Translations = {
   nav_import: "Import",
   nav_settings: "Settings",
   nav_accounting: "Accounting",
+  nav_stripe_invoices: "Stripe invoices",
   nav_logout: "Sign Out",
   nav_collapse: "Collapse sidebar",
   nav_expand: "Expand sidebar",
@@ -717,6 +722,7 @@ const EN_TRANSLATIONS: Translations = {
   ziina_completed: "Paid",
   ziina_failed: "Failed",
   ziina_canceled: "Canceled",
+  ziina_refunded: "Refunded",
 
   zoho_not_synced: "Not Invoiced",
   zoho_contact_ready: "Contact Ready",

@@ -19,6 +19,7 @@ import {
 import { Alert, Badge, Button, ziinaTone, zohoTone } from "@/components/ui";
 import { ItemPicker } from "@/components/ItemPicker";
 import { PartnerSelect } from "@/components/ledger";
+import { GatewayBadge } from "./StripeSyncButton";
 import { useAcc } from "@/lib/i18n-acc";
 import { api } from "@/components/fetcher";
 import { formatMoney } from "@/lib/money";
@@ -48,6 +49,7 @@ export interface Row {
   candidateCount: number;
   checkedAt: string | null;
   partnerAccountId: string | null;
+  gateway: string;
 }
 
 const fmtDate = (s: string) =>
@@ -315,6 +317,7 @@ export function PaymentsTable({
                   <Badge tone={zohoTone(p.zohoStatus)}>
                     {getZohoStatusLabel(p.zohoStatus)}
                   </Badge>
+                  <GatewayBadge gateway={p.gateway} />
                   {p.test && <Badge tone="yellow">{t.test_pill}</Badge>}
                   {p.candidateCount > 0 && p.zohoStatus !== "paid" && (
                     <Badge tone="yellow">
@@ -424,6 +427,9 @@ export function PaymentsTable({
                     <Badge tone={ziinaTone(p.status)} dot pulse={p.status === "pending"}>
                       {getZiinaStatusLabel(p.status)}
                     </Badge>
+                    <span className="ms-1.5">
+                      <GatewayBadge gateway={p.gateway} />
+                    </span>
                     {p.test && <span className="ms-1.5 text-xs font-semibold text-amber-600">{t.test_pill}</span>}
                   </td>
 

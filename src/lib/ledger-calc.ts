@@ -36,6 +36,7 @@ export interface SaleLite {
   grossFils: number; // amount + tip, AED
   feeFils: number; // Ziina fee, AED
   partnerAccountId?: string | null; // partner entitled to this payment
+  gateway?: string; // "ziina" (default) | "stripe" — the gateway account keyed the same receives it
 }
 
 export const EXPENSE_CATEGORIES = [
@@ -72,8 +73,10 @@ export function accountBalance(account: AccountLite, entries: EntryLite[], sales
   const from = account.openingDate ?? null;
   let bal = account.openingFils;
   for (const e of entries) if (inRange(e.date, from, asOf ?? null)) bal += entryEffect(e, account.id);
-  if (account.key === "ziina") {
-    for (const s of sales) if (inRange(s.date, from, asOf ?? null)) bal += s.grossFils - s.feeFils;
+  if (account.kind === "gateway" && account.key) {
+    for (const s of sales) {
+      if ((s.gateway ?? "ziina") === account.key && inRange(s.date, from, asOf ?? null)) bal += s.grossFils - s.feeFils;
+    }
   }
   return bal;
 }
@@ -89,6 +92,7 @@ export interface PartnerSummary {
 
 export interface PeriodReport {
   salesCount: number;
+  salesByGateway: { gateway: string; count: number; sales: number; fees: number }[];
   sales: number;
   gatewayFees: number;
   netReceived: number;
@@ -149,6 +153,10 @@ export function periodReport(
 
   return {
     salesCount: ss.length,
+    salesByGateway: [...new Set(ss.map((s) => s.gateway ?? "ziina"))].sort().map((g) => {
+      const x = ss.filter((s) => (s.gateway ?? "ziina") === g);
+      return { gateway: g, count: x.length, sales: sum(x.map((s) => s.grossFils)), fees: sum(x.map((s) => s.feeFils)) };
+    }),
     sales: salesTotal,
     gatewayFees,
     netReceived: salesTotal - gatewayFees,

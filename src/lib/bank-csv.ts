@@ -216,6 +216,7 @@ export function parseStatement(records: Record<string, string>[], map: ColumnMap
 export interface ClassifyContext {
   bankAccountId: string;
   gatewayAccountId?: string; // Ziina
+  stripeAccountId?: string; // Stripe payouts arrive via Network International
   partners: { id: string; name: string }[];
 }
 
@@ -242,6 +243,10 @@ export function suggestBooking(line: BankLine, ctx: ClassifyContext): Suggestion
   const bank = ctx.bankAccountId;
   const incoming = line.amountFils > 0;
 
+  // Stripe payouts to a UAE bank show as "From NETWORK INTERNATIONAL LLC" with a STRIPE-… note.
+  if (incoming && ctx.stripeAccountId && /stripe|network international/i.test(`${d} ${line.notes ?? ""}`)) {
+    return { kind: "transfer", fromAccountId: ctx.stripeAccountId, toAccountId: bank };
+  }
   if (incoming && ctx.gatewayAccountId && /ziina/i.test(d)) {
     return { kind: "transfer", fromAccountId: ctx.gatewayAccountId, toAccountId: bank };
   }

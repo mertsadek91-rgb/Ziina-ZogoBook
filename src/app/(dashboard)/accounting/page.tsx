@@ -174,7 +174,11 @@ export default function AccountingOverview() {
             <KpiCard
               title={a.sales}
               value={formatMoney(r.sales)}
-              subtext={`${r.salesCount} ${a.payments_n}`}
+              subtext={
+                r.salesByGateway.length > 1
+                  ? r.salesByGateway.map((g) => `${g.gateway === "stripe" ? "Stripe" : "Ziina"} ${formatMoney(g.sales)}`).join(" · ")
+                  : `${r.salesCount} ${a.payments_n}`
+              }
               icon={<Wallet className="h-5 w-5 text-emerald-600" />}
             />
             <KpiCard

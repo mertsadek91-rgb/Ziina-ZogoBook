@@ -19,8 +19,8 @@ const AR = {
   from: "من",
   to: "إلى",
 
-  sales: "المبيعات (Ziina)",
-  gateway_fees: "عمولات بوابة الدفع",
+  sales: "المبيعات",
+  gateway_fees: "عمولات بوابات الدفع",
   bank_fees: "رسوم البنك والتحويل",
   expenses: "المصاريف",
   other_income: "إيرادات أخرى",
@@ -147,7 +147,7 @@ const EN: Dict = {
   from: "From",
   to: "To",
 
-  sales: "Sales (Ziina)",
+  sales: "Sales",
   gateway_fees: "Payment gateway fees",
   bank_fees: "Bank & transfer fees",
   expenses: "Expenses",

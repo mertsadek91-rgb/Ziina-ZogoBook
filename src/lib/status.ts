@@ -25,7 +25,7 @@ const UNLINKED = ["not_synced", "contact_ready"];
 
 export function tabOf(p: StatusLike): Exclude<Tab, "all"> {
   if (p.archived) return "archived";
-  if (p.status === "failed" || p.status === "canceled") return "failed";
+  if (p.status === "failed" || p.status === "canceled" || p.status === "refunded") return "failed";
   if (PENDING.includes(p.status)) return "pending";
   // completed
   if (p.zohoStatus === "error") return "errors";
@@ -46,7 +46,7 @@ function visibleWhere(tab: Tab): Record<string, unknown> {
     case "pending":
       return { status: { in: PENDING } };
     case "failed":
-      return { status: { in: ["failed", "canceled"] } };
+      return { status: { in: ["failed", "canceled", "refunded"] } };
     case "errors":
       return { status: "completed", zohoStatus: "error" };
     case "done":
@@ -69,6 +69,7 @@ export const ZIINA_STATUS_LABEL: Record<string, string> = {
   completed: "مدفوع",
   failed: "فشل",
   canceled: "ملغي",
+  refunded: "مسترد",
 };
 
 export const ZOHO_STATUS_LABEL: Record<string, string> = {

@@ -21,6 +21,7 @@ import { TABS, type Tab } from "@/lib/status";
 import { useI18n } from "@/lib/i18n";
 import { PaymentsTable, type Row } from "./PaymentsTable";
 import { ReconcileButton } from "./ReconcileButton";
+import { StripeSyncButton } from "./StripeSyncButton";
 import { HideTestButton } from "./HideTestButton";
 
 interface PaymentsViewProps {
@@ -32,6 +33,7 @@ interface PaymentsViewProps {
   visibleTestCount: number;
   payments: Row[];
   partners: { id: string; name: string }[];
+  stripeEnabled?: boolean;
 }
 
 export function PaymentsView({
@@ -41,6 +43,7 @@ export function PaymentsView({
   initialTo = "",
   counts,
   visibleTestCount,
+  stripeEnabled,
   payments,
   partners,
 }: PaymentsViewProps) {
@@ -138,6 +141,7 @@ export function PaymentsView({
 
         <div className="flex flex-wrap items-center gap-2.5">
           {visibleTestCount > 0 && <HideTestButton count={visibleTestCount} />}
+          {stripeEnabled && <StripeSyncButton />}
           <ReconcileButton />
           <Link href="/quick-link">
             <Button variant="secondary" size="md">
