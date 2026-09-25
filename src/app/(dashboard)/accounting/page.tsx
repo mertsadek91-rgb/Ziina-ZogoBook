@@ -184,6 +184,11 @@ export default function AccountingOverview() {
             <KpiCard
               title={a.gateway_fees}
               value={formatMoney(r.gatewayFees)}
+              subtext={
+                r.salesByGateway.length > 1
+                  ? r.salesByGateway.map((g) => `${g.gateway === "stripe" ? "Stripe" : "Ziina"} ${formatMoney(g.fees)}`).join(" · ")
+                  : undefined
+              }
               icon={<CreditCard className="h-5 w-5 text-purple-600" />}
             />
             <KpiCard
@@ -208,6 +213,51 @@ export default function AccountingOverview() {
               icon={<TrendingUp className="h-5 w-5 text-brand" />}
             />
           </div>
+
+          {/* Per-gateway breakdown */}
+          {r.salesByGateway.length > 0 && (
+            <Card className="overflow-hidden p-0">
+              <div className="border-b border-slate-100 px-5 py-3 text-sm font-bold text-slate-900">{a.by_gateway_title}</div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px] text-sm">
+                  <thead className="bg-slate-50/80 text-xs font-semibold text-slate-500">
+                    <tr>
+                      <th className="px-5 py-2.5 text-start">{a.gateway}</th>
+                      <th className="px-5 py-2.5 text-end">{a.payments_n}</th>
+                      <th className="px-5 py-2.5 text-end">{a.sales}</th>
+                      <th className="px-5 py-2.5 text-end">{a.gateway_fees}</th>
+                      <th className="px-5 py-2.5 text-end">{a.fee_rate}</th>
+                      <th className="px-5 py-2.5 text-end">{a.net_after_fees}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {r.salesByGateway.map((g) => (
+                      <tr key={g.gateway}>
+                        <td className="px-5 py-2.5 font-semibold text-slate-800">{g.gateway === "stripe" ? "Stripe" : "Ziina"}</td>
+                        <td className="num px-5 py-2.5 text-end text-slate-600">{g.count}</td>
+                        <td className="num px-5 py-2.5 text-end">{formatMoney(g.sales)}</td>
+                        <td className="num px-5 py-2.5 text-end text-rose-600">{formatMoney(g.fees)}</td>
+                        <td className="num px-5 py-2.5 text-end text-slate-600">
+                          {g.sales ? `${((g.fees / g.sales) * 100).toFixed(2)}%` : "—"}
+                        </td>
+                        <td className="num px-5 py-2.5 text-end font-bold text-emerald-700">{formatMoney(g.sales - g.fees)}</td>
+                      </tr>
+                    ))}
+                    {r.salesByGateway.length > 1 && (
+                      <tr className="bg-slate-50/60 font-bold">
+                        <td className="px-5 py-2.5 text-slate-900">∑</td>
+                        <td className="num px-5 py-2.5 text-end">{r.salesCount}</td>
+                        <td className="num px-5 py-2.5 text-end">{formatMoney(r.sales)}</td>
+                        <td className="num px-5 py-2.5 text-end text-rose-600">{formatMoney(r.gatewayFees)}</td>
+                        <td className="num px-5 py-2.5 text-end">{r.sales ? `${((r.gatewayFees / r.sales) * 100).toFixed(2)}%` : "—"}</td>
+                        <td className="num px-5 py-2.5 text-end text-emerald-700">{formatMoney(r.netReceived)}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
 
           {/* Partner Statements Section */}
           <section className="space-y-3.5">

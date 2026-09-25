@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { chargeStatus, mapStripeSale, refundedInSettlement, stripeOrderNumber, type StripeBalanceTransaction, type StripeCharge } from "@/lib/stripe-map";
+import { chargeStatus, mapStripeSale, orderFromCheckout, refundedInSettlement, stripeOrderNumber, type StripeBalanceTransaction, type StripeCharge } from "@/lib/stripe-map";
 import { suggestBooking } from "@/lib/bank-csv";
 import { accountBalance, periodReport, type AccountLite, type SaleLite } from "@/lib/ledger-calc";
 
@@ -78,6 +78,15 @@ describe("stripeOrderNumber", () => {
     expect(stripeOrderNumber(charge({ invoice: null, description: "Order #333140 - consulting" }))).toBe("333140");
     expect(stripeOrderNumber(charge({ invoice: null, description: "Consulting" }))).toBeNull();
   });
+  it("reads the order from a Checkout session (Payment Links): metadata, client reference, then item names", () => {
+    const items = (...d: string[]) => ({ data: d.map((description) => ({ description })) });
+    expect(orderFromCheckout({ id: "cs_1", line_items: items("Order #21237") })).toBe("21237");
+    expect(orderFromCheckout({ id: "cs_1", line_items: { data: [{ description: null, price: { product: { name: "Order #555" } } }] } })).toBe("555");
+    expect(orderFromCheckout({ id: "cs_1", client_reference_id: "#REF-9", line_items: items("Order #1") })).toBe("REF-9");
+    expect(orderFromCheckout({ id: "cs_1", metadata: { order_id: "M-7" }, line_items: items("Order #1") })).toBe("M-7");
+    expect(orderFromCheckout({ id: "cs_1", line_items: items("Consulting session") })).toBeNull();
+  });
+
   it("is mapped and never overwrites a number typed in the app", async () => {
     expect(mapStripeSale(bt(), charge({ metadata: { order_number: "777" } })).orderNumber).toBe("777");
   });
@@ -134,6 +143,9 @@ const stripeApi = {
   charges: new Map<string, StripeCharge>(),
   lastSince: undefined as number | undefined,
   mode: "live" as "live" | "test",
+  sessions: new Map<string, unknown>(),
+  checkoutDenied: false,
+  checkoutCalls: 0,
 };
 
 vi.mock("@/lib/db", () => ({
@@ -158,7 +170,19 @@ vi.mock("@/lib/db", () => ({
   setSetting: async (k: string, v: string) => void db.settings.set(k, v),
 }));
 
-vi.mock("@/lib/stripe", () => ({
+vi.mock("@/lib/stripe", () => {
+  class StripeError extends Error {
+    constructor(message: string, public status?: number) {
+      super(message);
+    }
+  }
+  return {
+  StripeError,
+  findCheckoutSession: async (pi: string) => {
+    stripeApi.checkoutCalls++;
+    if (stripeApi.checkoutDenied) throw new StripeError("The provided key does not have the required permissions", 403);
+    return stripeApi.sessions.get(pi) ?? null;
+  },
   stripeConfigured: () => true,
   stripeCursorKey: () => `stripe_synced_until_${stripeApi.mode}`,
   listBalanceTransactions: async (since?: number) => {
@@ -166,7 +190,8 @@ vi.mock("@/lib/stripe", () => ({
     return stripeApi.txns;
   },
   getCharge: async (id: string) => stripeApi.charges.get(id)!,
-}));
+  };
+});
 
 const { syncStripe } = await import("@/lib/stripe-sync");
 
@@ -178,6 +203,31 @@ describe("syncStripe", () => {
     stripeApi.txns = [];
     stripeApi.charges.clear();
     stripeApi.mode = "live";
+    stripeApi.sessions.clear();
+    stripeApi.checkoutDenied = false;
+    stripeApi.checkoutCalls = 0;
+  });
+
+  it("takes the order number from the Checkout session when the charge has none (\"Order #21237\")", async () => {
+    stripeApi.sessions.set("pi_1", { id: "cs_1", line_items: { data: [{ description: "Order #21237" }] } });
+    stripeApi.txns = [bt({ source: charge({ payment_intent: "pi_1", metadata: {}, description: null }) })];
+    await syncStripe();
+    expect([...db.payments.values()][0]).toMatchObject({ orderNumber: "21237" });
+    // Next sync: the payment already has an order number → no extra Checkout lookup.
+    await syncStripe();
+    expect(stripeApi.checkoutCalls).toBe(1);
+  });
+
+  it("keeps syncing when the key lacks Checkout permission, falls back to the invoice number, and reports it", async () => {
+    stripeApi.checkoutDenied = true;
+    stripeApi.txns = [
+      bt({ source: charge({ payment_intent: "pi_1" }) }),
+      bt({ id: "txn_2", source: charge({ id: "ch_2", payment_intent: "pi_2" }) }),
+    ];
+    const s = await syncStripe();
+    expect(s).toMatchObject({ created: 2, checkoutPermissionMissing: true });
+    expect(stripeApi.checkoutCalls).toBe(1); // stops asking after the first 403
+    expect([...db.payments.values()][0]).toMatchObject({ orderNumber: "ABC-0001" });
   });
 
   it("keeps a separate cursor per mode: switching a test key for a live key imports the full live history", async () => {

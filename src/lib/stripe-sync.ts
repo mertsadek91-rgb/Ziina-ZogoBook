@@ -1,5 +1,5 @@
 import { prisma, getSetting, setSetting } from "./db";
-import { getCharge, listBalanceTransactions, stripeConfigured, stripeCursorKey } from "./stripe";
+import { StripeError, findCheckoutSession, getCharge, listBalanceTransactions, stripeConfigured, stripeCursorKey } from "./stripe";
 import {
   FILL_IF_EMPTY,
   REFUND_TYPES,
@@ -7,8 +7,11 @@ import {
   STRIPE_OWNED,
   chargeStatus,
   isCharge,
+  orderFromCharge,
+  orderFromCheckout,
   mapStripeSale,
   refundedInSettlement,
+  type StripeCharge,
   type StripeSaleFields,
 } from "./stripe-map";
 
@@ -19,10 +22,29 @@ export interface StripeSyncSummary {
   created: number;
   updated: number;
   refundsUpdated: number;
+  checkoutPermissionMissing?: boolean; // key lacks "Checkout Sessions: Read" → order numbers from Checkout unavailable
 }
 
-async function upsertSale(fields: StripeSaleFields): Promise<"created" | "updated"> {
+async function upsertSale(
+  fields: StripeSaleFields,
+  charge: StripeCharge,
+  summary: StripeSyncSummary,
+): Promise<"created" | "updated"> {
   const existing = await prisma.payment.findUnique({ where: { ziinaIntentId: fields.ziinaIntentId } });
+
+  // Payment Links / Checkout put the order in the session's items ("Order #21237"): look it up
+  // only when the charge itself has no order number and none was typed in the app.
+  if (!existing?.orderNumber && !orderFromCharge(charge) && charge.payment_intent && !summary.checkoutPermissionMissing) {
+    try {
+      const session = await findCheckoutSession(charge.payment_intent);
+      const n = session ? orderFromCheckout(session) : null;
+      if (n) fields = { ...fields, orderNumber: n };
+    } catch (e) {
+      if (e instanceof StripeError && (e.status === 401 || e.status === 403)) summary.checkoutPermissionMissing = true;
+      else throw e;
+    }
+  }
+
   if (!existing) {
     await prisma.payment.create({ data: fields });
     return "created";
@@ -53,7 +75,7 @@ export async function syncStripe(): Promise<StripeSyncSummary> {
   for (const bt of txns) {
     maxCreated = Math.max(maxCreated, bt.created);
     if (SALE_TYPES.has(bt.type) && isCharge(bt.source)) {
-      const r = await upsertSale(mapStripeSale(bt, bt.source));
+      const r = await upsertSale(mapStripeSale(bt, bt.source), bt.source, summary);
       summary[r]++;
     } else if (REFUND_TYPES.has(bt.type) && bt.source && typeof bt.source === "object") {
       const chargeId = (bt.source as { charge?: string | null }).charge;

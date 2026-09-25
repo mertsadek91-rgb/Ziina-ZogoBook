@@ -1,7 +1,7 @@
 // Minimal read-only Stripe REST client (no SDK). Use a *restricted* key with read access to:
 // Balance, Balance transactions, Charges, Customers, Invoices.
 
-import type { StripeBalanceTransaction, StripeCharge } from "./stripe-map";
+import type { CheckoutSessionLite, StripeBalanceTransaction, StripeCharge } from "./stripe-map";
 
 const BASE = "https://api.stripe.com/v1";
 
@@ -22,8 +22,9 @@ export function stripeKeyMode(): "live" | "test" {
 
 /** Settings key holding the sync cursor. One per mode, so switching test → live imports the full live history. */
 export function stripeCursorKey(): string {
-  // "_v2": bumped when a new field is filled from Stripe (order number) → one full, idempotent re-sync.
-  return `stripe_synced_until_${stripeKeyMode()}_v2`;
+  // Version suffix: bumped when a new field is filled from Stripe (order numbers from Checkout)
+  // → one full, idempotent re-sync.
+  return `stripe_synced_until_${stripeKeyMode()}_v3`;
 }
 
 type Query = Record<string, string | number | undefined | string[]>;
@@ -84,6 +85,16 @@ export async function listBalanceTransactions(since?: number): Promise<StripeBal
 
 export function getCharge(id: string): Promise<StripeCharge> {
   return get<StripeCharge>(`/charges/${encodeURIComponent(id)}`, { "expand[]": ["customer", "invoice"] });
+}
+
+/** Checkout session that produced a payment intent (needs "Checkout Sessions: Read"). */
+export async function findCheckoutSession(paymentIntentId: string): Promise<CheckoutSessionLite | null> {
+  const r = await get<List<CheckoutSessionLite>>("/checkout/sessions", {
+    payment_intent: paymentIntentId,
+    limit: 1,
+    "expand[]": ["data.line_items"],
+  });
+  return r.data[0] ?? null;
 }
 
 export interface StripeInvoice {

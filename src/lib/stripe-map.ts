@@ -38,6 +38,7 @@ export interface StripeCharge {
   invoice?: string | StripeInvoiceLite | null;
   payment_method_details?: { card?: { brand?: string | null; last4?: string | null } | null } | null;
   metadata?: Record<string, string>;
+  payment_intent?: string | null;
 }
 
 export interface StripeBalanceTransaction {
@@ -83,15 +84,54 @@ const ORDER_KEYS = ["order_number", "order_id", "orderNumber", "orderId", "order
  * The user can still type or change it in the app.
  */
 export function stripeOrderNumber(c: StripeCharge): string | null {
+  const own = orderFromCharge(c);
+  if (own) return own;
+  const invoice = typeof c.invoice === "object" && c.invoice ? c.invoice : null;
+  return invoice?.number ? invoice.number.slice(0, 40) : null;
+}
+
+const ORDER_RE = /\border\s*(?:no\.?|number|#)?\s*#?\s*([A-Za-z0-9-]{3,})/i;
+
+/** "Order #21237" → "21237" (null if the text holds no order number). */
+export function orderFromText(text?: string | null): string | null {
+  const m = (text ?? "").match(ORDER_RE);
+  return m ? m[1].slice(0, 40) : null;
+}
+
+/** Order number carried by the charge itself: metadata, then "Order #…" in the description. */
+export function orderFromCharge(c: StripeCharge): string | null {
   const meta = c.metadata ?? {};
   for (const k of ORDER_KEYS) {
     const v = meta[k];
     if (v && String(v).trim()) return String(v).trim().replace(/^#+/, "").slice(0, 40);
   }
-  const invoice = typeof c.invoice === "object" && c.invoice ? c.invoice : null;
-  if (invoice?.number) return invoice.number.slice(0, 40);
-  const m = (c.description ?? "").match(/\border\s*(?:no\.?|number|#)?\s*#?\s*([A-Za-z0-9-]{3,})/i);
-  return m ? m[1].slice(0, 40) : null;
+  return orderFromText(c.description);
+}
+
+export interface CheckoutSessionLite {
+  id: string;
+  metadata?: Record<string, string> | null;
+  client_reference_id?: string | null;
+  line_items?: { data: { description?: string | null; price?: { product?: { name?: string | null } | string | null } | null }[] } | null;
+}
+
+/**
+ * Order number from a Stripe Checkout session (Payment Links / Checkout): session metadata,
+ * client_reference_id, or an item named like "Order #21237".
+ */
+export function orderFromCheckout(s: CheckoutSessionLite): string | null {
+  const meta = s.metadata ?? {};
+  for (const k of ORDER_KEYS) {
+    const v = meta[k];
+    if (v && String(v).trim()) return String(v).trim().replace(/^#+/, "").slice(0, 40);
+  }
+  if (s.client_reference_id?.trim()) return s.client_reference_id.trim().replace(/^#+/, "").slice(0, 40);
+  for (const li of s.line_items?.data ?? []) {
+    const product = li.price && typeof li.price.product === "object" ? li.price.product : null;
+    const n = orderFromText(li.description) ?? orderFromText(product?.name);
+    if (n) return n;
+  }
+  return null;
 }
 
 /** Local Payment fields for a sale balance transaction whose `source` is the expanded charge. */

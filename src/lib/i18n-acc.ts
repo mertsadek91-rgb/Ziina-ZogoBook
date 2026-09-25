@@ -27,6 +27,10 @@ const AR = {
   net_profit: "صافي الربح",
   withdrawals: "المسحوب من Ziina إلى البنك",
   payments_n: "دفعة",
+  by_gateway_title: "حسب بوابة الدفع",
+  gateway: "البوابة",
+  fee_rate: "نسبة العمولة",
+  net_after_fees: "الصافي بعد العمولة",
 
   partners_title: "حسابات الشركاء",
   partners_hint: "تراكمي حتى نهاية الفترة. الرصيد السالب يعني أن الشريك استلم أكثر من المستحق له.",
@@ -155,6 +159,10 @@ const EN: Dict = {
   net_profit: "Net profit",
   withdrawals: "Withdrawn from Ziina to bank",
   payments_n: "payments",
+  by_gateway_title: "By payment gateway",
+  gateway: "Gateway",
+  fee_rate: "Fee rate",
+  net_after_fees: "Net after fees",
 
   partners_title: "Partner accounts",
   partners_hint: "Cumulative up to the end of the period. A negative balance means the partner received more than their due.",

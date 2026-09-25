@@ -12,6 +12,7 @@ interface Summary {
   created: number;
   updated: number;
   refundsUpdated: number;
+  checkoutPermissionMissing?: boolean;
 }
 
 /** Pull new Stripe payments now (also runs every 10 minutes with the scheduled task). */
@@ -31,6 +32,14 @@ export function StripeSyncButton() {
           ? `Stripe: ${s.created} جديدة، ${s.updated} محدّثة${s.refundsUpdated ? `، ${s.refundsUpdated} استرداد` : ""}`
           : `Stripe: ${s.created} new, ${s.updated} updated${s.refundsUpdated ? `, ${s.refundsUpdated} refunds` : ""}`,
       );
+      if (s.checkoutPermissionMissing) {
+        setText((x) =>
+          x +
+          (lang === "ar"
+            ? " — أضف صلاحية Checkout Sessions (Read) للمفتاح لقراءة أرقام الطلبات"
+            : " — add Checkout Sessions (Read) to the key to read order numbers"),
+        );
+      }
       router.refresh();
     } catch (e) {
       setText(e instanceof Error ? e.message : String(e));
