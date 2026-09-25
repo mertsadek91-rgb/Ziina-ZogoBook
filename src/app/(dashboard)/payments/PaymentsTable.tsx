@@ -349,24 +349,23 @@ export function PaymentsTable({
       <div className="hidden overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-start text-sm">
-            <thead className="border-b border-slate-100 bg-slate-50/80 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <thead className="border-b border-slate-100 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                {canBulk && <th className="w-10 px-4 py-3.5" />}
-                <th className="px-4 py-3.5 text-start">{t.col_date}</th>
-                <th className="px-4 py-3.5 text-start">{t.col_customer}</th>
-                <th className="px-4 py-3.5 text-start">{t.col_desc}</th>
-                <th className="px-4 py-3.5 text-start">{t.col_amount}</th>
-                <th className="px-4 py-3.5 text-start">{a.partner}</th>
-                <th className="px-4 py-3.5 text-start">{t.col_ziina}</th>
-                <th className="px-4 py-3.5 text-start">{t.col_zoho}</th>
-                <th className="px-4 py-3.5 text-start">{t.col_invoice}</th>
-                <th className="px-4 py-3.5 text-end">{t.actions}</th>
+                {canBulk && <th className="w-10 px-3 py-2" />}
+                <th className="px-3 py-2 text-start">{t.col_date}</th>
+                <th className="px-3 py-2 text-start">{t.col_customer}</th>
+                <th className="px-3 py-2 text-start">{t.col_amount}</th>
+                <th className="px-3 py-2 text-start">{a.partner}</th>
+                <th className="px-3 py-2 text-start">{t.col_ziina}</th>
+                <th className="px-3 py-2 text-start">{t.col_zoho}</th>
+                <th className="px-3 py-2 text-start">{t.col_invoice}</th>
+                <th className="px-3 py-2 text-end">{t.actions}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {payments.length === 0 && (
                 <tr>
-                  <td colSpan={canBulk ? 10 : 9} className="py-16 text-center">
+                  <td colSpan={canBulk ? 9 : 8} className="py-16 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <Inbox className="h-10 w-10 text-slate-300 mb-2" />
                       <div className="text-sm font-semibold text-slate-600">{t.no_payments_in_tab}</div>
@@ -377,7 +376,7 @@ export function PaymentsTable({
               {payments.map((p) => (
                 <tr key={p.id} className="transition duration-100 hover:bg-slate-50/80 group">
                   {canBulk && (
-                    <td className="px-4 py-3.5">
+                    <td className="px-3 py-2">
                       {canSync(p) && (
                         <input
                           type="checkbox"
@@ -389,11 +388,11 @@ export function PaymentsTable({
                     </td>
                   )}
 
-                  <td className="num whitespace-nowrap px-4 py-3.5 text-xs text-slate-500 font-medium">
+                  <td className="num whitespace-nowrap px-3 py-2 text-[11px] font-medium text-slate-500">
                     {fmtDate(p.paidAt ?? p.createdAt)}
                   </td>
 
-                  <td className="px-4 py-3.5">
+                  <td className="px-3 py-2">
                     <div className="font-bold text-slate-900">
                       {p.customerName || <span className="font-normal text-amber-600">{t.no_name}</span>}
                     </div>
@@ -403,27 +402,28 @@ export function PaymentsTable({
                           #{p.orderNumber}
                         </span>
                       )}
-                      <span>{p.customerEmail}</span>
+                      <span className="max-w-52 truncate">{p.customerEmail}</span>
                     </div>
+                    {p.message && (
+                      <div className="mt-0.5 max-w-64 truncate text-[11px] text-slate-400" title={p.message}>
+                        {p.message}
+                      </div>
+                    )}
                   </td>
 
-                  <td className="max-w-48 truncate px-4 py-3.5 text-xs text-slate-600" title={p.message ?? ""}>
-                    {p.message || <span className="text-slate-300">—</span>}
-                  </td>
-
-                  <td className="num whitespace-nowrap px-4 py-3.5">
+                  <td className="num whitespace-nowrap px-3 py-2">
                     <div className="font-bold text-slate-900">{formatMoney(p.amountFils, p.currency)}</div>
                     {p.originalAmountFils != null && p.originalCurrency && (
                       <div className="text-xs text-slate-400">{formatMoney(p.originalAmountFils, p.originalCurrency)}</div>
                     )}
                   </td>
 
-                  <td className="px-4 py-3.5">
-                    <div className="w-36">
+                  <td className="px-3 py-2">
+                    <div className="w-32">
                       <PartnerSelect compact partners={partners} value={partnerOf[p.id] ?? ""} onChange={(v) => assignPartner(p.id, v)} />
                     </div>
                   </td>
-                  <td className="px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-3 py-2 whitespace-nowrap">
                     <Badge tone={ziinaTone(p.status)} dot pulse={p.status === "pending"}>
                       {getZiinaStatusLabel(p.status)}
                     </Badge>
@@ -433,8 +433,11 @@ export function PaymentsTable({
                     {p.test && <span className="ms-1.5 text-xs font-semibold text-amber-600">{t.test_pill}</span>}
                   </td>
 
-                  <td className="px-4 py-3.5">
-                    <div className="flex flex-wrap items-center gap-1">
+                  <td className="px-3 py-2">
+                    <div
+                      className="flex flex-wrap items-center gap-1 whitespace-nowrap"
+                      title={p.checkedAt ? `${t.verified_at} ${fmtDate(p.checkedAt)}` : undefined}
+                    >
                       <Badge tone={zohoTone(p.zohoStatus)}>{getZohoStatusLabel(p.zohoStatus)}</Badge>
                       {p.candidateCount > 0 && p.zohoStatus !== "paid" && (
                         <Badge tone="yellow">
@@ -443,10 +446,8 @@ export function PaymentsTable({
                         </Badge>
                       )}
                     </div>
-                    {p.status === "completed" && (
-                      <div className="mt-1 text-[11px] text-slate-400">
-                        {p.checkedAt ? `${t.verified_at} ${fmtDate(p.checkedAt)}` : t.not_verified_zoho}
-                      </div>
+                    {p.status === "completed" && !p.checkedAt && (
+                      <div className="mt-0.5 text-[10px] text-slate-400">{t.not_verified_zoho}</div>
                     )}
                     {p.lastError && (
                       <div className="mt-1 max-w-44 truncate text-xs font-medium text-rose-600" title={p.lastError}>
@@ -455,9 +456,9 @@ export function PaymentsTable({
                     )}
                   </td>
 
-                  <td className="num px-4 py-3.5 text-xs font-medium text-slate-700">{p.zohoInvoiceNumber ?? "—"}</td>
+                  <td className="num whitespace-nowrap px-3 py-2 text-xs font-medium text-slate-700">{p.zohoInvoiceNumber ?? "—"}</td>
 
-                  <td className="whitespace-nowrap px-4 py-3.5 text-end">
+                  <td className="whitespace-nowrap px-3 py-2 text-end">
                     <Link
                       href={`/payments/${p.id}`}
                       className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold text-brand hover:bg-brand-50 transition"
