@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { createPaymentIntent, intentToPaymentFields } from "@/lib/ziina";
-import { MIN_AMOUNT_FILS, toFils } from "@/lib/money";
+import { CURRENCIES, MIN_AMOUNT_FILS, toMinor } from "@/lib/money";
 import { whereForTab, type Tab } from "@/lib/status";
 import { env } from "@/lib/env";
 import { jsonError } from "@/lib/api";
@@ -18,8 +18,12 @@ export async function GET(req: Request) {
   return NextResponse.json({ payments });
 }
 
+const CURRENCY_CODES = CURRENCIES.map((c) => c.code) as [string, ...string[]];
+
 const CreateSchema = z.object({
   amount: z.coerce.number().positive(),
+  currency: z.enum(CURRENCY_CODES).default("AED"),
+  allowTips: z.boolean().optional(),
   message: z.string().max(500).optional(),
   customerName: z.string().max(200).optional(),
   customerEmail: z.string().email().optional().or(z.literal("")),
@@ -32,12 +36,15 @@ const CreateSchema = z.object({
 export async function POST(req: Request) {
   try {
     const input = CreateSchema.parse(await req.json());
-    const amountFils = toFils(input.amount);
-    if (amountFils < MIN_AMOUNT_FILS) throw new Error("الحد الأدنى للمبلغ هو 2 درهم");
+    const amountFils = toMinor(input.amount, input.currency);
+    if (amountFils <= 0) throw new Error("المبلغ غير صالح");
+    if (input.currency === "AED" && amountFils < MIN_AMOUNT_FILS) throw new Error("الحد الأدنى للمبلغ هو 2 درهم");
 
     const test = input.test ?? env.ziinaTestMode();
     const pi = await createPaymentIntent({
       amountFils,
+      currency: input.currency,
+      allowTips: input.allowTips,
       message: input.message,
       expiryMs: input.expiryHours ? Date.now() + input.expiryHours * 3600_000 : undefined,
       test,

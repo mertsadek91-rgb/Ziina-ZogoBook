@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { formatMoney, fromFils, toFils } from "@/lib/money";
+import { formatMoney, fromFils, fromMinor, toFils, toMinor } from "@/lib/money";
 import { verifyHmac, intentToPaymentFields } from "@/lib/ziina";
 import { tabOf } from "@/lib/status";
 import { matchContact } from "@/lib/contacts";
@@ -17,6 +17,19 @@ describe("order number", () => {
   it("builds the Zoho note with or without an order number", () => {
     expect(zohoNote("pi", "333136")).toBe("Ziina Order #333136\nZiina payment pi");
     expect(zohoNote("pi", null)).toBe("Ziina payment pi");
+  });
+});
+
+describe("currencies", () => {
+  it("uses base units per currency and rounds 3-decimal currencies to the nearest ten", () => {
+    expect(toMinor(100, "SAR")).toBe(10000);
+    expect(toMinor("10.50", "USD")).toBe(1050);
+    expect(toMinor(1.234, "OMR")).toBe(1230);
+    expect(toMinor(1.236, "KWD")).toBe(1240);
+    expect(toMinor(5, "BHD")).toBe(5000);
+    expect(fromMinor(1230, "OMR")).toBe(1.23);
+    expect(formatMoney(1240, "KWD")).toBe("1.240 KWD");
+    expect(formatMoney(17090, "SAR")).toBe("170.90 SAR");
   });
 });
 

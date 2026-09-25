@@ -6,11 +6,13 @@ import { Alert, Button } from "@/components/ui";
 import { LinkResult } from "@/components/LinkResult";
 import { api } from "@/components/fetcher";
 import { formatMoney } from "@/lib/money";
+import { CurrencyHint, CurrencySelect } from "@/components/CurrencySelect";
 
 const PRESETS = [100, 250, 500, 1000];
 
 export default function QuickLinkPage() {
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("AED");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -22,7 +24,7 @@ export default function QuickLinkPage() {
     setError("");
     try {
       const r = await api<{ payment: { redirectUrl: string; amountFils: number; currency: string } }>("/api/payments", {
-        body: { amount, message: message || undefined },
+        body: { amount, currency, message: message || undefined },
       });
       setResult({
         url: r.payment.redirectUrl,
@@ -49,11 +51,21 @@ export default function QuickLinkPage() {
         <form onSubmit={create} className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           {error && <Alert tone="error">{error}</Alert>}
           <div>
-            <label>المبلغ (AED)</label>
+            <label>العملة</label>
+            <CurrencySelect
+              value={currency}
+              onChange={(c) => {
+                setCurrency(c);
+                setResult(null);
+              }}
+            />
+          </div>
+          <div>
+            <label>المبلغ ({currency})</label>
             <input
               type="number"
-              step="0.01"
-              min="2"
+              step={["KWD", "BHD", "OMR"].includes(currency) ? "0.001" : "0.01"}
+              min={currency === "AED" ? "2" : "0.01"}
               required
               autoFocus
               dir="ltr"
@@ -80,6 +92,7 @@ export default function QuickLinkPage() {
               </button>
             ))}
           </div>
+          <CurrencyHint currency={currency} />
           <div>
             <label>وصف (اختياري)</label>
             <input value={message} onChange={(e) => setMessage(e.target.value)} />

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Alert, Button, Card } from "@/components/ui";
 import { LinkResult } from "@/components/LinkResult";
 import { api } from "@/components/fetcher";
-import { formatMoney } from "@/lib/money";
+import { decimalsOf, formatMoney } from "@/lib/money";
+import { CurrencyHint, CurrencySelect } from "@/components/CurrencySelect";
 
 interface Created {
   id: string;
@@ -16,6 +17,8 @@ interface Created {
 }
 
 export default function NewLinkPage() {
+  const [currency, setCurrency] = useState("AED");
+  const [allowTips, setAllowTips] = useState(false);
   const [form, setForm] = useState({
     amount: "",
     message: "",
@@ -38,7 +41,7 @@ export default function NewLinkPage() {
     setError("");
     try {
       const r = await api<{ payment: Created }>("/api/payments", {
-        body: { ...form, expiryHours: form.expiryHours || undefined },
+        body: { ...form, currency, allowTips, expiryHours: form.expiryHours || undefined },
       });
       setCreated(r.payment);
     } catch (err) {
@@ -81,16 +84,33 @@ export default function NewLinkPage() {
         <Card>
           <form onSubmit={submit} className="space-y-4">
             {error && <Alert tone="error">{error}</Alert>}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <label>المبلغ (AED) *</label>
-                <input type="number" step="0.01" min="2" required dir="ltr" value={form.amount} onChange={set("amount")} />
+                <label>المبلغ *</label>
+                <input
+                  type="number"
+                  step={decimalsOf(currency) === 3 ? "0.001" : "0.01"}
+                  min={currency === "AED" ? "2" : "0.01"}
+                  required
+                  dir="ltr"
+                  value={form.amount}
+                  onChange={set("amount")}
+                />
+              </div>
+              <div>
+                <label>العملة</label>
+                <CurrencySelect value={currency} onChange={setCurrency} />
               </div>
               <div>
                 <label>صلاحية الرابط (ساعات، اختياري)</label>
                 <input type="number" min="1" dir="ltr" value={form.expiryHours} onChange={set("expiryHours")} />
               </div>
             </div>
+            <CurrencyHint currency={currency} />
+            <label className="flex items-center gap-2">
+              <input type="checkbox" className="w-auto" checked={allowTips} onChange={(e) => setAllowTips(e.target.checked)} />
+              السماح بالإكرامية (يمكن للعميل إضافة إكرامية عند الدفع)
+            </label>
             <div>
               <label>الوصف (يظهر للعميل)</label>
               <input value={form.message} onChange={set("message")} placeholder="مثال: اشتراك شهري - خدمة التوصيات" />

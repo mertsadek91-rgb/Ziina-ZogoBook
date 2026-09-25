@@ -70,7 +70,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 export interface CreateIntentInput {
-  amountFils: number;
+  amountFils: number; // base units of `currency`
+  currency?: string; // ISO-4217, defaults to ZIINA_CURRENCY (AED)
   message?: string;
   expiryMs?: number; // absolute unix time in ms
   allowTips?: boolean;
@@ -81,7 +82,7 @@ export function createPaymentIntent(input: CreateIntentInput): Promise<ZiinaPaym
   const app = env.appUrl();
   return request<ZiinaPaymentIntent>("POST", "/payment_intent", {
     amount: input.amountFils,
-    currency_code: env.ziinaCurrency(),
+    currency_code: input.currency ?? env.ziinaCurrency(),
     message: input.message || undefined,
     success_url: `${app}/pay/result?status=success&pi={PAYMENT_INTENT_ID}`,
     cancel_url: `${app}/pay/result?status=cancel&pi={PAYMENT_INTENT_ID}`,

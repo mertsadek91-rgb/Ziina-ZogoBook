@@ -38,8 +38,8 @@ export async function reconcile(opts: { ids?: string[]; sinceDays?: number } = {
 
   const payments = await prisma.payment.findMany({
     where: opts.ids
-      ? { id: { in: opts.ids }, status: "completed", archived: false }
-      : { status: "completed", archived: false, createdAt: { gte: new Date(Date.now() - (opts.sinceDays ?? 90) * 86400_000) } },
+      ? { id: { in: opts.ids }, status: "completed", archived: false, currency: "AED" }
+      : { status: "completed", archived: false, currency: "AED", createdAt: { gte: new Date(Date.now() - (opts.sinceDays ?? 90) * 86400_000) } },
   });
   if (!payments.length) return summary;
 

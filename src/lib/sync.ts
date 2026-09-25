@@ -93,6 +93,7 @@ export async function syncToZoho(paymentId: string, opts: SyncOptions): Promise<
     step = "ziina_check";
     p = await refreshFromZiina(p);
     if (p.status !== "completed") throw new Error(`الدفعة غير مكتملة في Ziina (الحالة: ${p.status})`);
+    if (p.currency !== "AED") throw new Error(`لم تتم تسوية الدفعة بالدرهم بعد (العملة: ${p.currency}) — حدّث من Ziina وأعد المحاولة`);
 
     const reference = p.ziinaIntentId;
     const amount = fromFils(p.amountFils + p.tipFils);

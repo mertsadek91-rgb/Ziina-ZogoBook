@@ -18,7 +18,7 @@ export default async function PaymentsPage({
   const q = sp.q?.trim();
 
   const groups = await prisma.payment.groupBy({
-    by: ["status", "zohoStatus", "zohoCandidateCount", "archived"],
+    by: ["status", "zohoStatus", "zohoCandidateCount", "archived", "currency"],
     _count: { _all: true },
     _sum: { amountFils: true },
   });
@@ -27,10 +27,11 @@ export default async function PaymentsPage({
     const t = tabOf(g);
     counts[t] ??= { n: 0, sum: 0 };
     counts[t].n += g._count._all;
-    counts[t].sum += g._sum.amountFils ?? 0;
+    const aed = g.currency === "AED" ? (g._sum.amountFils ?? 0) : 0;
+    counts[t].sum += aed;
     if (g.archived) continue;
     counts.all.n += g._count._all;
-    counts.all.sum += g._sum.amountFils ?? 0;
+    counts.all.sum += aed;
   }
 
   const visibleTestCount = await prisma.payment.count({ where: { test: true, archived: false } });

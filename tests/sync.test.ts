@@ -34,6 +34,7 @@ vi.mock("@/lib/ziina", () => ({
   getPaymentIntent: async (id: string) => ({ id, amount: 10000, currency_code: "AED", status: ziinaStatus.value, fee_amount: 300 }),
   intentToPaymentFields: (pi: { amount: number; status: string; fee_amount: number }) => ({
     amountFils: pi.amount,
+    currency: "AED",
     status: pi.status,
     feeFils: pi.fee_amount,
     tipFils: 0,
@@ -110,6 +111,7 @@ function seed(extra: Row = {}) {
     id: "p1",
     ziinaIntentId: "pi_123",
     amountFils: 10000,
+    currency: "AED",
     tipFils: 0,
     feeFils: 300,
     status: "completed",
