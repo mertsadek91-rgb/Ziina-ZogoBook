@@ -3,11 +3,25 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  Inbox,
+  CheckSquare,
+  Square,
+  ArrowRight,
+  ArrowLeft,
+  Send,
+  AlertTriangle,
+  Mail,
+  Calendar,
+  ExternalLink,
+  ChevronRight,
+} from "lucide-react";
 import { Alert, Badge, Button, ziinaTone, zohoTone } from "@/components/ui";
 import { ItemPicker } from "@/components/ItemPicker";
 import { api } from "@/components/fetcher";
 import { formatMoney } from "@/lib/money";
-import { ZIINA_STATUS_LABEL, ZOHO_STATUS_LABEL, type Tab } from "@/lib/status";
+import { type Tab } from "@/lib/status";
+import { useI18n } from "@/lib/i18n";
 
 export interface Row {
   id: string;
@@ -38,6 +52,7 @@ const fmtDate = (s: string) =>
 
 export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) {
   const router = useRouter();
+  const { t, lang, dir } = useI18n();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [item, setItem] = useState<{ id: string; name: string }>({ id: "", name: "" });
@@ -56,6 +71,14 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
     setSelected(s);
   }
 
+  function toggleSelectAll() {
+    if (selected.size === selectable.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(selectable.map((p) => p.id)));
+    }
+  }
+
   async function bulkSync() {
     setBusy(true);
     setMsg(null);
@@ -65,9 +88,14 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
       });
       const ok = r.results.filter((x) => x.ok).length;
       const failed = r.results.filter((x) => !x.ok);
+      const successText =
+        lang === "ar"
+          ? `تم ترحيل ${ok} من ${r.results.length}.${failed.length ? " الأخطاء: " + failed.map((f) => f.error).join(" | ") : ""}`
+          : `Synced ${ok} of ${r.results.length}.${failed.length ? " Errors: " + failed.map((f) => f.error).join(" | ") : ""}`;
+
       setMsg({
         tone: failed.length ? "error" : "success",
-        text: `تم ترحيل ${ok} من ${r.results.length}.${failed.length ? " الأخطاء: " + failed.map((f) => f.error).join(" | ") : ""}`,
+        text: successText,
       });
       setSelected(new Set());
       setBulkOpen(false);
@@ -79,118 +107,296 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
     }
   }
 
+  const getZiinaStatusLabel = (status: string) => {
+    const key = `ziina_${status}` as keyof typeof t;
+    return (t[key] as string) || status;
+  };
+
+  const getZohoStatusLabel = (status: string) => {
+    const key = `zoho_${status}` as keyof typeof t;
+    return (t[key] as string) || status;
+  };
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
 
+      {/* Bulk Sync Action Bar */}
       {canBulk && selectable.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white p-3">
-          <span className="text-sm text-gray-600">المحدد: {selected.size}</span>
-          <Button variant="secondary" onClick={() => setSelected(new Set(selectable.map((p) => p.id)))}>
-            تحديد الكل
-          </Button>
-          <Button disabled={!selected.size} onClick={() => setBulkOpen((v) => !v)}>
-            ترحيل المحدد إلى Zoho
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-xs">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleSelectAll}
+              className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-brand"
+            >
+              {selected.size === selectable.length ? (
+                <CheckSquare className="h-4 w-4 text-brand" />
+              ) : (
+                <Square className="h-4 w-4 text-slate-400" />
+              )}
+              <span>
+                {t.selected_count}: <b className="num text-slate-900">{selected.size}</b> / {selectable.length}
+              </span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!selected.size}
+              onClick={() => setBulkOpen((v) => !v)}
+            >
+              <Send className="h-3.5 w-3.5" />
+              <span>{t.bulk_sync}</span>
+            </Button>
+          </div>
         </div>
       )}
 
+      {/* Bulk Sync Drawer / Form */}
       {bulkOpen && (
-        <div className="space-y-3 rounded-xl border border-brand/30 bg-white p-4">
-          <div className="text-sm font-medium">اختر الخدمة لكل الدفعات المحددة ({selected.size})</div>
-          <p className="text-xs text-gray-500">الدفعات التي ليس لها اسم أو إيميل عميل ستفشل ويجب إكمالها من صفحة التفاصيل.</p>
+        <div className="space-y-4 rounded-2xl border border-brand/20 bg-brand-50/40 p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-bold text-slate-900">
+              {t.bulk_title} ({selected.size})
+            </div>
+            <button
+              type="button"
+              onClick={() => setBulkOpen(false)}
+              className="text-xs text-slate-400 hover:text-slate-700"
+            >
+              {t.cancel}
+            </button>
+          </div>
+          <p className="text-xs text-slate-500">{t.bulk_notice}</p>
           <ItemPicker value={item.id} onChange={(id, name) => setItem({ id, name })} />
-          <label className="flex items-center gap-2">
-            <input type="checkbox" className="w-auto" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} />
-            إرسال الفاتورة بالإيميل للعملاء
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/20"
+              checked={sendEmail}
+              onChange={(e) => setSendEmail(e.target.checked)}
+            />
+            <span>{t.bulk_email_checkbox}</span>
           </label>
-          <Button loading={busy} disabled={!item.id} onClick={bulkSync}>
-            تنفيذ الترحيل
+          <Button loading={busy} disabled={!item.id || !selected.size} onClick={bulkSync}>
+            {t.bulk_execute} ({selected.size})
           </Button>
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full min-w-[900px] text-sm">
-          <thead className="bg-gray-50 text-right text-xs text-gray-500">
-            <tr>
-              {canBulk && <th className="w-8 p-3" />}
-              <th className="p-3">التاريخ</th>
-              <th className="p-3">العميل</th>
-              <th className="p-3">الوصف</th>
-              <th className="p-3">المبلغ</th>
-              <th className="p-3">Ziina</th>
-              <th className="p-3">Zoho</th>
-              <th className="p-3">الفاتورة</th>
-              <th className="p-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {payments.length === 0 && (
+      {/* Mobile Card List View (visible on < md screens) */}
+      <div className="space-y-3 md:hidden">
+        {payments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-8 text-center">
+            <Inbox className="h-10 w-10 text-slate-300 mb-2" />
+            <div className="text-sm font-semibold text-slate-700">{t.no_payments_in_tab}</div>
+          </div>
+        ) : (
+          payments.map((p) => (
+            <div
+              key={p.id}
+              className="relative rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs space-y-3"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  {canBulk && canSync(p) && (
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/20"
+                      checked={selected.has(p.id)}
+                      onChange={() => toggle(p.id)}
+                    />
+                  )}
+                  <div>
+                    <div className="font-bold text-slate-900 text-sm">
+                      {p.customerName || <span className="text-amber-600 font-medium">{t.no_name}</span>}
+                    </div>
+                    <div className="text-xs text-slate-500 flex flex-wrap items-center gap-2 mt-0.5">
+                      {p.orderNumber && (
+                        <span className="num font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+                          #{p.orderNumber}
+                        </span>
+                      )}
+                      {p.customerEmail && <span className="truncate max-w-[180px]">{p.customerEmail}</span>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-end shrink-0">
+                  <div className="num font-bold text-base text-slate-900">
+                    {formatMoney(p.amountFils, p.currency)}
+                  </div>
+                  {p.originalAmountFils != null && p.originalCurrency && (
+                    <div className="num text-[11px] text-slate-400">
+                      {formatMoney(p.originalAmountFils, p.originalCurrency)}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {p.message && <div className="text-xs text-slate-600 line-clamp-2 bg-slate-50 p-2 rounded-xl">{p.message}</div>}
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge tone={ziinaTone(p.status)} dot>
+                    {getZiinaStatusLabel(p.status)}
+                  </Badge>
+                  <Badge tone={zohoTone(p.zohoStatus)}>
+                    {getZohoStatusLabel(p.zohoStatus)}
+                  </Badge>
+                  {p.test && <Badge tone="yellow">{t.test_pill}</Badge>}
+                  {p.candidateCount > 0 && p.zohoStatus !== "paid" && (
+                    <Badge tone="yellow">
+                      <AlertTriangle className="h-3 w-3 inline" /> {t.potential_match} ({p.candidateCount})
+                    </Badge>
+                  )}
+                </div>
+
+                <Link
+                  href={`/payments/${p.id}`}
+                  className="inline-flex items-center gap-1 font-semibold text-brand hover:underline"
+                >
+                  <span>
+                    {p.candidateCount > 0 && p.zohoStatus !== "paid"
+                      ? t.review_arrow
+                      : canSync(p)
+                        ? t.invoice_arrow
+                        : t.details}
+                  </span>
+                  {dir === "rtl" ? <ArrowLeft className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />}
+                </Link>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop Table View (visible on >= md screens) */}
+      <div className="hidden overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs md:block">
+        <div className="overflow-x-auto">
+          <table className="w-full text-start text-sm">
+            <thead className="border-b border-slate-100 bg-slate-50/80 text-xs font-semibold text-slate-500 uppercase tracking-wider">
               <tr>
-                <td colSpan={9} className="p-8 text-center text-gray-400">
-                  لا توجد دفعات في هذا القسم
-                </td>
+                {canBulk && <th className="w-10 px-4 py-3.5" />}
+                <th className="px-4 py-3.5 text-start">{t.col_date}</th>
+                <th className="px-4 py-3.5 text-start">{t.col_customer}</th>
+                <th className="px-4 py-3.5 text-start">{t.col_desc}</th>
+                <th className="px-4 py-3.5 text-start">{t.col_amount}</th>
+                <th className="px-4 py-3.5 text-start">{t.col_ziina}</th>
+                <th className="px-4 py-3.5 text-start">{t.col_zoho}</th>
+                <th className="px-4 py-3.5 text-start">{t.col_invoice}</th>
+                <th className="px-4 py-3.5 text-end">{t.actions}</th>
               </tr>
-            )}
-            {payments.map((p) => (
-              <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
-                {canBulk && (
-                  <td className="p-3">
-                    {canSync(p) && (
-                      <input type="checkbox" className="w-auto" checked={selected.has(p.id)} onChange={() => toggle(p.id)} />
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {payments.length === 0 && (
+                <tr>
+                  <td colSpan={canBulk ? 9 : 8} className="py-16 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <Inbox className="h-10 w-10 text-slate-300 mb-2" />
+                      <div className="text-sm font-semibold text-slate-600">{t.no_payments_in_tab}</div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {payments.map((p) => (
+                <tr key={p.id} className="transition duration-100 hover:bg-slate-50/80 group">
+                  {canBulk && (
+                    <td className="px-4 py-3.5">
+                      {canSync(p) && (
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand/20 cursor-pointer"
+                          checked={selected.has(p.id)}
+                          onChange={() => toggle(p.id)}
+                        />
+                      )}
+                    </td>
+                  )}
+
+                  <td className="num whitespace-nowrap px-4 py-3.5 text-xs text-slate-500 font-medium">
+                    {fmtDate(p.paidAt ?? p.createdAt)}
+                  </td>
+
+                  <td className="px-4 py-3.5">
+                    <div className="font-bold text-slate-900">
+                      {p.customerName || <span className="font-normal text-amber-600">{t.no_name}</span>}
+                    </div>
+                    <div className="num mt-0.5 text-xs text-slate-500 flex items-center gap-1.5">
+                      {p.orderNumber && (
+                        <span className="font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">
+                          #{p.orderNumber}
+                        </span>
+                      )}
+                      <span>{p.customerEmail}</span>
+                    </div>
+                  </td>
+
+                  <td className="max-w-48 truncate px-4 py-3.5 text-xs text-slate-600" title={p.message ?? ""}>
+                    {p.message || <span className="text-slate-300">—</span>}
+                  </td>
+
+                  <td className="num whitespace-nowrap px-4 py-3.5">
+                    <div className="font-bold text-slate-900">{formatMoney(p.amountFils, p.currency)}</div>
+                    {p.originalAmountFils != null && p.originalCurrency && (
+                      <div className="text-xs text-slate-400">{formatMoney(p.originalAmountFils, p.originalCurrency)}</div>
                     )}
                   </td>
-                )}
-                <td className="num p-3 whitespace-nowrap text-gray-600">{fmtDate(p.paidAt ?? p.createdAt)}</td>
-                <td className="p-3">
-                  <div className="font-medium">{p.customerName || <span className="text-amber-600">— بدون اسم —</span>}</div>
-                  <div className="num text-xs text-gray-500">
-                    {p.orderNumber && <span className="me-2 font-medium text-gray-700">#{p.orderNumber}</span>}
-                    {p.customerEmail}
-                  </div>
-                </td>
-                <td className="max-w-56 truncate p-3 text-gray-600" title={p.message ?? ""}>
-                  {p.message}
-                </td>
-                <td className="num p-3 whitespace-nowrap">
-                  <div className="font-semibold">{formatMoney(p.amountFils, p.currency)}</div>
-                  {p.originalAmountFils != null && p.originalCurrency && (
-                    <div className="text-xs text-gray-500">{formatMoney(p.originalAmountFils, p.originalCurrency)}</div>
-                  )}
-                </td>
-                <td className="p-3">
-                  <Badge tone={ziinaTone(p.status)}>{ZIINA_STATUS_LABEL[p.status] ?? p.status}</Badge>
-                  {p.test && <span className="ms-1 text-xs text-amber-600">تجريبي</span>}
-                </td>
-                <td className="p-3">
-                  <Badge tone={zohoTone(p.zohoStatus)}>{ZOHO_STATUS_LABEL[p.zohoStatus] ?? p.zohoStatus}</Badge>
-                  {p.candidateCount > 0 && p.zohoStatus !== "paid" && (
-                    <span className="ms-1">
-                      <Badge tone="yellow">تطابق محتمل ({p.candidateCount})</Badge>
-                    </span>
-                  )}
-                  {p.status === "completed" && (
-                    <div className="mt-1 text-[11px] text-gray-400">
-                      {p.checkedAt ? `تم التحقق ${fmtDate(p.checkedAt)}` : "لم يتم التحقق مع Zoho"}
+
+                  <td className="px-4 py-3.5 whitespace-nowrap">
+                    <Badge tone={ziinaTone(p.status)} dot pulse={p.status === "pending"}>
+                      {getZiinaStatusLabel(p.status)}
+                    </Badge>
+                    {p.test && <span className="ms-1.5 text-xs font-semibold text-amber-600">{t.test_pill}</span>}
+                  </td>
+
+                  <td className="px-4 py-3.5">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Badge tone={zohoTone(p.zohoStatus)}>{getZohoStatusLabel(p.zohoStatus)}</Badge>
+                      {p.candidateCount > 0 && p.zohoStatus !== "paid" && (
+                        <Badge tone="yellow">
+                          <AlertTriangle className="h-3 w-3 inline mr-0.5" />
+                          {t.potential_match} ({p.candidateCount})
+                        </Badge>
+                      )}
                     </div>
-                  )}
-                  {p.lastError && (
-                    <div className="mt-1 max-w-48 truncate text-xs text-red-600" title={p.lastError}>
-                      {p.lastError}
-                    </div>
-                  )}
-                </td>
-                <td className="num p-3">{p.zohoInvoiceNumber ?? "—"}</td>
-                <td className="p-3 text-left whitespace-nowrap">
-                  <Link href={`/payments/${p.id}`} className="text-brand hover:underline">
-                    {p.candidateCount > 0 && p.zohoStatus !== "paid" ? "مراجعة ←" : canSync(p) ? "إصدار فاتورة ←" : "تفاصيل"}
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    {p.status === "completed" && (
+                      <div className="mt-1 text-[11px] text-slate-400">
+                        {p.checkedAt ? `${t.verified_at} ${fmtDate(p.checkedAt)}` : t.not_verified_zoho}
+                      </div>
+                    )}
+                    {p.lastError && (
+                      <div className="mt-1 max-w-44 truncate text-xs font-medium text-rose-600" title={p.lastError}>
+                        {p.lastError}
+                      </div>
+                    )}
+                  </td>
+
+                  <td className="num px-4 py-3.5 text-xs font-medium text-slate-700">{p.zohoInvoiceNumber ?? "—"}</td>
+
+                  <td className="whitespace-nowrap px-4 py-3.5 text-end">
+                    <Link
+                      href={`/payments/${p.id}`}
+                      className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold text-brand hover:bg-brand-50 transition"
+                    >
+                      <span>
+                        {p.candidateCount > 0 && p.zohoStatus !== "paid"
+                          ? t.review_arrow
+                          : canSync(p)
+                            ? t.invoice_arrow
+                            : t.details}
+                      </span>
+                      {dir === "rtl" ? <ArrowLeft className="h-3 w-3" /> : <ArrowRight className="h-3 w-3" />}
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

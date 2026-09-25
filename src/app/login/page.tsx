@@ -2,9 +2,12 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Lock, ArrowRight, ArrowLeft } from "lucide-react";
 import { Alert, Button } from "@/components/ui";
+import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 
 function LoginForm() {
+  const { t, dir } = useI18n();
   const next = useSearchParams().get("next") || "/payments";
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -22,29 +25,56 @@ function LoginForm() {
     if (res.ok) {
       location.href = next.startsWith("/") ? next : "/payments";
     } else {
-      setError((await res.json().catch(() => ({}))).error ?? "فشل تسجيل الدخول");
+      setError((await res.json().catch(() => ({}))).error ?? t.login_failed_msg);
       setBusy(false);
     }
   }
 
   return (
-    <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h1 className="text-center text-xl font-bold text-brand">Ziina ↔ Zoho</h1>
-      {error && <Alert tone="error">{error}</Alert>}
-      <div>
-        <label>كلمة المرور</label>
-        <input type="password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
+    <div className="relative w-full max-w-sm">
+      {/* Language Switcher Float */}
+      <div className="flex justify-end mb-3">
+        <LanguageSwitcher />
       </div>
-      <Button type="submit" loading={busy} className="w-full">
-        دخول
-      </Button>
-    </form>
+
+      <form onSubmit={submit} className="space-y-5 rounded-3xl border border-slate-200/90 bg-white p-7 shadow-lg">
+        <div className="text-center space-y-2">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand to-brand-light text-white shadow-md text-xl font-bold">
+            ⚡
+          </div>
+          <h1 className="text-xl font-extrabold tracking-tight text-slate-900">Ziina ↔ Zoho</h1>
+          <p className="text-xs text-slate-500">{t.login_welcome}</p>
+        </div>
+
+        {error && <Alert tone="error">{error}</Alert>}
+
+        <div>
+          <label>{t.password_label}</label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute top-1/2 -translate-y-1/2 ms-3 h-4 w-4 text-slate-400" />
+            <input
+              type="password"
+              autoFocus
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="ps-9"
+              placeholder="••••••••"
+            />
+          </div>
+        </div>
+
+        <Button type="submit" loading={busy} size="lg" className="w-full">
+          <span>{t.login_submit}</span>
+          {dir === "rtl" ? <ArrowLeft className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+        </Button>
+      </form>
+    </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="flex min-h-screen items-center justify-center px-4 bg-slate-50/80">
       <Suspense>
         <LoginForm />
       </Suspense>

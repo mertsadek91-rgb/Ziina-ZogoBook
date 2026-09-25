@@ -3,27 +3,70 @@
 @theme {
   --color-brand: #5b3df5;
   --color-brand-dark: #4629d6;
-  --font-sans: var(--font-arabic), system-ui, sans-serif;
+  --color-brand-light: #795ef7;
+  --color-brand-50: #f5f3ff;
+  --color-brand-100: #ede9fe;
+  --font-sans: var(--font-latin), var(--font-arabic), system-ui, -apple-system, sans-serif;
+}
+
+/* Arabic-first stack. Defined here rather than as a @theme token: a theme token named
+   --font-arabic would overwrite (and reference itself through) the next/font variable. */
+.font-arabic {
+  font-family: var(--font-arabic), var(--font-latin), system-ui, sans-serif;
 }
 
 html,
 body {
-  background: #f6f7fb;
-  color: #111827;
+  background-color: #f8fafc;
+  color: #0f172a;
+  min-height: 100vh;
 }
 
+/* Force tabular alignment for numbers, monetary values, and dates regardless of language direction */
 .num {
   font-variant-numeric: tabular-nums;
   direction: ltr;
   unicode-bidi: isolate;
+  display: inline-block;
 }
 
-input,
-select,
-textarea {
-  @apply w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20;
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-label {
-  @apply mb-1 block text-sm font-medium text-gray-700;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Modern inputs & interactive elements.
+   Kept in the base layer so utilities on an element (ps-9 for icon inputs, w-auto on
+   checkboxes, …) can override these defaults — unlayered rules would always win. */
+@layer base {
+  input,
+  select,
+  textarea {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition duration-150 focus:border-brand focus:ring-3 focus:ring-brand/15 disabled:bg-slate-50 disabled:text-slate-400;
+  }
+
+  label {
+    @apply mb-1.5 block text-xs font-semibold tracking-wide text-slate-700;
+  }
+}
+
+/* Glass effect utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
