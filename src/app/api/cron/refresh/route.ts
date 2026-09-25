@@ -16,6 +16,7 @@ async function handler(req: Request) {
   const pending = await prisma.payment.findMany({
     where: {
       source: { not: "csv" },
+      archived: false,
       status: { in: ["requires_payment_instrument", "requires_user_action", "pending"] },
       createdAt: { gte: new Date(Date.now() - 30 * 86400_000) },
     },

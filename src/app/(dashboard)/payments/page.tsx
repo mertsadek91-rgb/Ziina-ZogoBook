@@ -4,6 +4,7 @@ import { TABS, tabOf, whereForTab, type Tab } from "@/lib/status";
 import { formatMoney } from "@/lib/money";
 import { PaymentsTable } from "./PaymentsTable";
 import { ReconcileButton } from "./ReconcileButton";
+import { HideTestButton } from "./HideTestButton";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function PaymentsPage({
   const q = sp.q?.trim();
 
   const groups = await prisma.payment.groupBy({
-    by: ["status", "zohoStatus", "zohoCandidateCount"],
+    by: ["status", "zohoStatus", "zohoCandidateCount", "archived"],
     _count: { _all: true },
     _sum: { amountFils: true },
   });
@@ -27,9 +28,12 @@ export default async function PaymentsPage({
     counts[t] ??= { n: 0, sum: 0 };
     counts[t].n += g._count._all;
     counts[t].sum += g._sum.amountFils ?? 0;
+    if (g.archived) continue;
     counts.all.n += g._count._all;
     counts.all.sum += g._sum.amountFils ?? 0;
   }
+
+  const visibleTestCount = await prisma.payment.count({ where: { test: true, archived: false } });
 
   const dateFilter =
     sp.from || sp.to
@@ -75,6 +79,7 @@ export default async function PaymentsPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold">الدفعات</h1>
         <div className="flex flex-wrap gap-2">
+          {visibleTestCount > 0 && <HideTestButton count={visibleTestCount} />}
           <ReconcileButton />
           <Link href="/quick-link" className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50">
             رابط سريع
@@ -85,7 +90,7 @@ export default async function PaymentsPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
         {TABS.map((t) => {
           const c = counts[t.key] ?? { n: 0, sum: 0 };
           const active = t.key === tab;

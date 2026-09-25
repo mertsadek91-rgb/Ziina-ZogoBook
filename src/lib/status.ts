@@ -1,4 +1,4 @@
-export type Tab = "pending" | "to_invoice" | "review" | "invoiced" | "done" | "errors" | "failed" | "all";
+export type Tab = "pending" | "to_invoice" | "review" | "invoiced" | "done" | "errors" | "failed" | "all" | "archived";
 
 export const TABS: { key: Tab; label: string }[] = [
   { key: "to_invoice", label: "مدفوع – بدون فاتورة" },
@@ -9,6 +9,7 @@ export const TABS: { key: Tab; label: string }[] = [
   { key: "errors", label: "أخطاء الترحيل" },
   { key: "failed", label: "فشل / ملغي" },
   { key: "all", label: "الكل" },
+  { key: "archived", label: "المخفية" },
 ];
 
 const PENDING = ["requires_payment_instrument", "requires_user_action", "pending"];
@@ -17,11 +18,13 @@ export interface StatusLike {
   status: string;
   zohoStatus: string;
   zohoCandidateCount?: number;
+  archived?: boolean;
 }
 
 const UNLINKED = ["not_synced", "contact_ready"];
 
 export function tabOf(p: StatusLike): Exclude<Tab, "all"> {
+  if (p.archived) return "archived";
   if (p.status === "failed" || p.status === "canceled") return "failed";
   if (PENDING.includes(p.status)) return "pending";
   // completed
@@ -34,6 +37,11 @@ export function tabOf(p: StatusLike): Exclude<Tab, "all"> {
 
 /** Prisma `where` fragment for a tab. */
 export function whereForTab(tab: Tab): Record<string, unknown> {
+  if (tab === "archived") return { archived: true };
+  return { archived: false, ...visibleWhere(tab) };
+}
+
+function visibleWhere(tab: Tab): Record<string, unknown> {
   switch (tab) {
     case "pending":
       return { status: { in: PENDING } };

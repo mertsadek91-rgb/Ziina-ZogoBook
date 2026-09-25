@@ -5,6 +5,7 @@ import * as zoho from "./zoho";
 import { matchContact } from "./contacts";
 import { fromFils } from "./money";
 import { reconcile } from "./reconcile";
+import { env } from "./env";
 
 export class MatchReviewError extends Error {
   constructor(count: number) {
@@ -64,6 +65,13 @@ export async function refreshFromZiina(payment: Payment): Promise<Payment> {
 export async function syncToZoho(paymentId: string, opts: SyncOptions): Promise<SyncResult> {
   let p = await prisma.payment.findUniqueOrThrow({ where: { id: paymentId } });
   let step = "start";
+
+  // Refusals that must not mark the payment as a sync error.
+  if (p.archived) return { ok: false, payment: p, error: "هذه الدفعة مخفية — أظهرها أولًا قبل إصدار فاتورة" };
+  // A test payment is not a real sale: never invoice it once the system runs in live mode.
+  if (p.test && !env.ziinaTestMode()) {
+    return { ok: false, payment: p, error: "هذه دفعة تجريبية ولا يمكن إصدار فاتورة حقيقية لها في الوضع الفعلي" };
+  }
 
   try {
     // Customer details edited in the form are saved first.

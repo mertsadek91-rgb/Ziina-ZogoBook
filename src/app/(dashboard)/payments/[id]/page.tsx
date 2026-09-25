@@ -53,6 +53,7 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
         <Badge tone={ziinaTone(p.status)}>{ZIINA_STATUS_LABEL[p.status] ?? p.status}</Badge>
         <Badge tone={zohoTone(p.zohoStatus)}>{ZOHO_STATUS_LABEL[p.zohoStatus] ?? p.zohoStatus}</Badge>
         {p.test && <Badge tone="yellow">تجريبي</Badge>}
+        {p.archived && <Badge tone="gray">مخفية</Badge>}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-5">
@@ -85,7 +86,7 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
         </div>
 
         <div className="space-y-5 lg:col-span-3">
-          {p.zohoCandidates && p.zohoStatus !== "paid" && (
+          {p.zohoCandidates && p.zohoStatus !== "paid" && !p.archived && (
             <MatchPanel paymentId={p.id} candidates={JSON.parse(p.zohoCandidates) as Candidate[]} />
           )}
           <PaymentActions
@@ -102,6 +103,9 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
               lastError: p.lastError,
               paidDate: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(p.paidAt ?? p.createdAt),
               source: p.source,
+              test: p.test,
+              archived: p.archived,
+              liveMode: process.env.ZIINA_TEST_MODE !== "true",
             }}
           />
           <Card>

@@ -30,8 +30,9 @@ model Payment {
   customerPhone String? @db.VarChar(40)
   notes         String? @db.Text
 
-  source String  @default("api") @db.VarChar(20) // api | csv | webhook
-  test   Boolean @default(false)
+  source   String  @default("api") @db.VarChar(20) // api | csv | webhook
+  test     Boolean @default(false)
+  archived Boolean @default(false) // hidden from lists, totals and Zoho checks (e.g. test payments)
 
   // Zoho Books
   zohoStatus        String    @default("not_synced") @db.VarChar(20) // not_synced | contact_ready | invoiced | paid | error
@@ -58,6 +59,7 @@ model Payment {
   @@index([status])
   @@index([zohoStatus])
   @@index([createdAt])
+  @@index([archived])
 }
 
 model SyncLog {

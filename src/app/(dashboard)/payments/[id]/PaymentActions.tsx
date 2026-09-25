@@ -19,6 +19,9 @@ interface P {
   lastError: string | null;
   paidDate: string;
   source: string;
+  test: boolean;
+  archived: boolean;
+  liveMode: boolean;
 }
 
 export function PaymentActions({ payment }: { payment: P }) {
@@ -38,6 +41,8 @@ export function PaymentActions({ payment }: { payment: P }) {
 
   const completed = payment.status === "completed";
   const done = payment.zohoStatus === "paid";
+  // Test payments cannot be invoiced once the system runs in live mode; hidden ones not at all.
+  const blocked = payment.archived || (payment.test && payment.liveMode);
 
   async function run(name: string, fn: () => Promise<string>) {
     setBusy(name);
@@ -83,7 +88,19 @@ export function PaymentActions({ payment }: { payment: P }) {
     <Card className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">{done ? "الفاتورة مكتملة" : "إصدار فاتورة في Zoho Books"}</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="ghost"
+            loading={busy === "archive"}
+            onClick={() =>
+              run("archive", async () => {
+                await api(`/api/payments/${payment.id}/archive`, { body: { archived: !payment.archived } });
+                return payment.archived ? "تم إظهار الدفعة" : "تم إخفاء الدفعة — تجدها في قسم المخفية";
+              })
+            }
+          >
+            {payment.archived ? "إظهار الدفعة" : "إخفاء الدفعة"}
+          </Button>
           {payment.source !== "csv" && (
             <Button
               variant="secondary"
@@ -114,6 +131,10 @@ export function PaymentActions({ payment }: { payment: P }) {
       </div>
 
       {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
+      {payment.archived && <Alert tone="info">هذه الدفعة مخفية ولا تظهر في الأقسام أو الإجماليات أو فحص Zoho.</Alert>}
+      {!payment.archived && payment.test && payment.liveMode && (
+        <Alert tone="info">هذه دفعة تجريبية — لا يمكن إصدار فاتورة حقيقية لها في الوضع الفعلي. يمكنك إخفاؤها.</Alert>
+      )}
       {!completed && <Alert tone="info">لا يمكن إصدار الفاتورة قبل اكتمال الدفع في Ziina.</Alert>}
 
       <fieldset className="grid gap-3 sm:grid-cols-3">
@@ -141,7 +162,7 @@ export function PaymentActions({ payment }: { payment: P }) {
         </Button>
       )}
 
-      {completed && !done && (
+      {completed && !done && !blocked && (
         <>
           <div>
             <label>الخدمة (من Zoho Books) *</label>
