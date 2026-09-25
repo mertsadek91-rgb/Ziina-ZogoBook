@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { formatMoney, fromFils, fromMinor, toFils, toMinor } from "@/lib/money";
+import { aedToUsd, formatMoney, fromFils, fromMinor, toFils, toMinor } from "@/lib/money";
 import { verifyHmac, intentToPaymentFields } from "@/lib/ziina";
 import { tabOf } from "@/lib/status";
 import { matchContact } from "@/lib/contacts";
@@ -30,6 +30,15 @@ describe("currencies", () => {
     expect(fromMinor(1230, "OMR")).toBe(1.23);
     expect(formatMoney(1240, "KWD")).toBe("1.240 KWD");
     expect(formatMoney(17090, "SAR")).toBe("170.90 SAR");
+  });
+});
+
+describe("AED → USD at the peg", () => {
+  it("converts partner balances (1 USD = 3.6725 AED)", () => {
+    expect(aedToUsd(688274)).toBe(187413); // 6,882.74 AED → 1,874.13 USD
+    expect(formatMoney(aedToUsd(-2060), "USD")).toBe("-5.61 USD"); // −20.60 AED
+    expect(aedToUsd(367250)).toBe(100000); // 3,672.50 AED = 1,000.00 USD exactly
+    expect(aedToUsd(0)).toBe(0);
   });
 });
 

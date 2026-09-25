@@ -58,3 +58,11 @@ export function formatMoney(units: number, currency = "AED"): string {
 }
 
 export const MIN_AMOUNT_FILS = 200; // Ziina minimum: 2 AED
+
+/** Official UAE Central Bank peg: 1 USD = 3.6725 AED (fixed since 1997). */
+export const AED_PER_USD = 3.6725;
+
+/** AED fils → USD cents at the peg. */
+export function aedToUsd(fils: number): number {
+  return Math.round(fils / AED_PER_USD);
+}

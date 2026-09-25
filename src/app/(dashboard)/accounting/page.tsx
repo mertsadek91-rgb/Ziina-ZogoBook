@@ -21,7 +21,7 @@ import { Alert, Card, KpiCard, Badge } from "@/components/ui";
 import { Money } from "@/components/ledger";
 import { api } from "@/components/fetcher";
 import { useAcc } from "@/lib/i18n-acc";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, aedToUsd } from "@/lib/money";
 import type { PartnerStatement, PeriodReport } from "@/lib/ledger-calc";
 
 interface Summary {
@@ -259,6 +259,9 @@ export default function AccountingOverview() {
                         <div className="text-lg font-extrabold">
                           <Money fils={p.remaining} strong signColor />
                         </div>
+                        <div className={`num text-xs font-semibold ${p.remaining < 0 ? "text-rose-500" : "text-slate-500"}`}>
+                          ≈ {formatMoney(aedToUsd(p.remaining), "USD")}
+                        </div>
                         <div className="mt-1">
                           {isSettled ? (
                             <Badge tone="green" dot>
@@ -288,6 +291,15 @@ export default function AccountingOverview() {
                         <dt className="font-bold text-slate-900">{a.remaining}</dt>
                         <dd>
                           <Money fils={p.remaining} strong signColor />
+                        </dd>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <dt className="font-semibold text-slate-700" title={a.usd_rate_hint}>
+                          {a.remaining_usd}
+                          <span className="ms-1 text-[10px] font-normal text-slate-400">({a.usd_rate_hint})</span>
+                        </dt>
+                        <dd className={`num font-bold ${p.remaining < 0 ? "text-rose-600" : p.remaining > 0 ? "text-emerald-700" : "text-slate-500"}`}>
+                          {formatMoney(aedToUsd(p.remaining), "USD")}
                         </dd>
                       </div>
                     </dl>
