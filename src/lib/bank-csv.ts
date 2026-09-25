@@ -3,10 +3,13 @@
 
 import type { EntryKind } from "./ledger-calc";
 
-export type ColumnKey = "date" | "description" | "amount" | "debit" | "credit" | "balance" | "reference";
+export type ColumnKey = "date" | "description" | "amount" | "debit" | "credit" | "balance" | "reference" | "notes" | "type";
 
 export type ColumnMap = Partial<Record<ColumnKey, string>>;
 
+// Wio Business export columns: Account name, Account type, Account IBAN, Account number, Card number,
+// Account currency, Transaction type, Date, Ref. number, Description, Amount, Balance,
+// Original ref. number, Notes.
 const GUESSES: Record<ColumnKey, RegExp> = {
   date: /^(transaction |value |posting |booking )?date( ?time)?$|^التاريخ/i,
   description: /description|details|narrative|particulars|merchant|transaction$|^البيان|الوصف/i,
@@ -14,14 +17,17 @@ const GUESSES: Record<ColumnKey, RegExp> = {
   debit: /debit|withdrawal|money out|paid out|مدين|سحب/i,
   credit: /credit|deposit|money in|paid in|دائن|إيداع/i,
   balance: /balance|الرصيد/i,
-  reference: /reference|ref\b|ref\.|transaction id|المرجع/i,
+  // "Ref. number" (not "Original ref. number", which is N/A on Wio statements)
+  reference: /^(ref\.?|reference)( ?(number|no\.?|#))?$|^transaction id$|^المرجع/i,
+  notes: /^notes?$|memo|remarks|ملاحظات/i,
+  type: /^(transaction )?type$|^category$|^النوع/i,
 };
 
 export function guessColumns(headers: string[]): ColumnMap {
   const map: ColumnMap = {};
   const used = new Set<string>();
   // Order matters: specific columns first so "Balance" is not taken as amount, etc.
-  for (const key of ["balance", "debit", "credit", "reference", "date", "amount", "description"] as ColumnKey[]) {
+  for (const key of ["balance", "debit", "credit", "reference", "type", "notes", "date", "amount", "description"] as ColumnKey[]) {
     const h = headers.find((x) => !used.has(x) && GUESSES[key].test(x.trim()));
     if (h) {
       map[key] = h;
@@ -99,23 +105,37 @@ function hash(s: string): string {
 export interface BankLine {
   date: string; // ISO with +04:00
   amountFils: number; // signed: + money in, − money out
-  description: string;
+  description: string; // bank description (used for classification)
+  notes?: string; // extra bank notes (e.g. Wio "Cash out transfer for operation …")
+  type?: string; // bank transaction type (e.g. Wio "Transfers", "Fees")
   reference?: string;
   balanceFils?: number;
   externalId: string;
 }
 
 export interface ParseResult {
-  lines: BankLine[];
+  lines: BankLine[]; // always oldest → newest
   problems: string[];
-  closingBalanceFils?: number; // balance on the latest line, when the statement has a balance column
+  openingBalanceFils?: number; // balance before the first line (from the running balance)
+  closingBalanceFils?: number; // balance after the last line
   closingDate?: string;
 }
 
 const fils = (n: number) => Math.round(n * 100);
 
+/** Empty-ish cell values used by bank exports. */
+const clean = (v?: string) => {
+  const s = (v ?? "").trim();
+  return !s || /^(n\/a|na|null|undefined|-)$/i.test(s) ? undefined : s;
+};
+
+/** Text stored with an imported entry: description + notes when they add information. */
+export function lineText(l: BankLine): string {
+  return l.notes && l.notes !== l.description ? `${l.description} — ${l.notes}` : l.description;
+}
+
 export function parseStatement(records: Record<string, string>[], map: ColumnMap): ParseResult {
-  const lines: BankLine[] = [];
+  let lines: BankLine[] = [];
   const problems: string[] = [];
   const seen = new Map<string, number>();
 
@@ -129,7 +149,7 @@ export function parseStatement(records: Record<string, string>[], map: ColumnMap
       const credit = map.credit ? parseAmount(r[map.credit]) : undefined;
       if (debit || credit) amount = (credit ? Math.abs(credit) : 0) - (debit ? Math.abs(debit) : 0);
     }
-    const description = (map.description ? r[map.description] : "")?.trim() ?? "";
+    const description = clean(map.description ? r[map.description] : undefined) ?? "";
     if (!date && amount === undefined && !description) return; // blank / footer line
     if (!date) {
       problems.push(`سطر ${rowNo}: تاريخ غير مفهوم "${map.date ? r[map.date] : ""}"`);
@@ -139,25 +159,56 @@ export function parseStatement(records: Record<string, string>[], map: ColumnMap
       if (amount === undefined) problems.push(`سطر ${rowNo}: مبلغ غير مفهوم`);
       return;
     }
-    const balance = map.balance ? parseAmount(r[map.balance]) : undefined;
-    const reference = map.reference ? r[map.reference]?.trim() || undefined : undefined;
-    const base = [date.slice(0, 10), fils(amount), description.toLowerCase(), reference ?? "", balance ?? ""].join("|");
-    // Identical lines in one file (same day, amount, text) are distinct transactions: number them.
-    const n = (seen.get(base) ?? 0) + 1;
-    seen.set(base, n);
+    const balance = map.balance ? parseAmount(clean(r[map.balance])) : undefined;
+    const reference = map.reference ? clean(r[map.reference]) : undefined;
+    // A bank reference number is unique per transaction → the most reliable duplicate key
+    // (works across overlapping statements). Otherwise hash the line's content.
+    let externalId: string;
+    if (reference) externalId = `bank:ref:${reference}`.slice(0, 80);
+    else {
+      const base = [date.slice(0, 10), fils(amount), description.toLowerCase(), balance ?? ""].join("|");
+      // Identical lines in one file (same day, amount, text) are distinct transactions: number them.
+      const n = (seen.get(base) ?? 0) + 1;
+      seen.set(base, n);
+      externalId = `bank:${hash(base)}:${n}`;
+    }
     lines.push({
       date,
       amountFils: fils(amount),
       description,
+      notes: map.notes ? clean(r[map.notes]) : undefined,
+      type: map.type ? clean(r[map.type]) : undefined,
       reference,
       balanceFils: balance !== undefined ? fils(balance) : undefined,
-      externalId: `bank:${hash(base)}:${n}`,
+      externalId,
     });
   });
 
-  let closing: BankLine | undefined;
-  for (const l of lines) if (l.balanceFils !== undefined && (!closing || l.date >= closing.date)) closing = l;
-  return { lines, problems, closingBalanceFils: closing?.balanceFils, closingDate: closing?.date };
+  // Statements can be newest-first; normalise to oldest → newest.
+  if (lines.length > 1 && lines[0].date > lines[lines.length - 1].date) lines = lines.reverse();
+
+  // Running-balance check: each balance must equal the previous balance + the amount.
+  // A mismatch means a missing line (e.g. an incomplete export) or a mis-read amount.
+  let opening: number | undefined;
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.balanceFils === undefined) continue;
+    if (i === 0) opening = l.balanceFils - l.amountFils;
+    const prev = lines[i - 1];
+    if (prev?.balanceFils !== undefined && prev.balanceFils + l.amountFils !== l.balanceFils) {
+      problems.push(
+        `الرصيد غير متسلسل عند ${l.date.slice(0, 10)} (${l.description}): المتوقع ${((prev.balanceFils + l.amountFils) / 100).toFixed(2)} والكشف يقول ${(l.balanceFils / 100).toFixed(2)}`,
+      );
+    }
+  }
+  const last = [...lines].reverse().find((l) => l.balanceFils !== undefined);
+  return {
+    lines,
+    problems,
+    openingBalanceFils: opening,
+    closingBalanceFils: last?.balanceFils,
+    closingDate: last?.date,
+  };
 }
 
 // ---------- Suggested booking ----------
@@ -201,7 +252,8 @@ export function suggestBooking(line: BankLine, ctx: ClassifyContext): Suggestion
       : { kind: "transfer", fromAccountId: bank, toAccountId: partner.id };
   }
   if (incoming) return { kind: "income", toAccountId: bank };
-  if (FEE.test(d)) return { kind: "bank_fee", fromAccountId: bank };
+  // Wio marks its own charges (subscription, transfer fees) with transaction type "Fees".
+  if (FEE.test(d) || /^fees?$|^charges?$/i.test(line.type ?? "")) return { kind: "bank_fee", fromAccountId: bank };
   if (ADS.test(d)) return { kind: "expense", fromAccountId: bank, category: "ads" };
   if (SUBS.test(d)) return { kind: "expense", fromAccountId: bank, category: "subscriptions" };
   if (GOV.test(d)) return { kind: "expense", fromAccountId: bank, category: "government" };

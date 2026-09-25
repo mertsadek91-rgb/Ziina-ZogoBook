@@ -8,7 +8,7 @@ import { Money, useAccounts } from "@/components/ledger";
 import { api } from "@/components/fetcher";
 import { useAcc } from "@/lib/i18n-acc";
 import { EXPENSE_CATEGORIES } from "@/lib/ledger-calc";
-import { guessColumns, parseStatement, suggestBooking, type BankLine, type ColumnKey, type ColumnMap } from "@/lib/bank-csv";
+import { guessColumns, lineText, parseStatement, suggestBooking, type BankLine, type ColumnKey, type ColumnMap } from "@/lib/bank-csv";
 import { formatMoney } from "@/lib/money";
 
 interface Row extends BankLine {
@@ -18,7 +18,7 @@ interface Row extends BankLine {
   category?: string;
 }
 
-const COLS: ColumnKey[] = ["date", "description", "amount", "debit", "credit", "balance", "reference"];
+const COLS: ColumnKey[] = ["date", "description", "amount", "debit", "credit", "balance", "reference", "notes", "type"];
 
 export default function ImportBankPage() {
   const { a, lang, kindLabel } = useAcc();
@@ -95,7 +95,7 @@ export default function ImportBankPage() {
             fromAccountId: r.fromAccountId,
             toAccountId: r.toAccountId,
             category: r.category,
-            description: r.description,
+            description: lineText(r),
             reference: r.reference,
             externalId: r.externalId,
           })),
@@ -183,6 +183,11 @@ export default function ImportBankPage() {
               <span>
                 {a.money_out}: <span className="num font-semibold text-rose-600">{formatMoney(totalOut)}</span>
               </span>
+              {parsed?.openingBalanceFils != null && (
+                <span>
+                  {a.opening_balance_stmt}: <span className="num font-semibold">{formatMoney(parsed.openingBalanceFils)}</span>
+                </span>
+              )}
               {parsed?.closingBalanceFils != null && (
                 <span>
                   {a.closing_balance}: <span className="num font-semibold">{formatMoney(parsed.closingBalanceFils)}</span>
@@ -206,9 +211,14 @@ export default function ImportBankPage() {
                   <tr key={r.externalId} className={`border-t border-slate-100 ${r.kind === "skip" ? "opacity-40" : ""}`}>
                     <td className="num whitespace-nowrap p-2">{new Date(r.date).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai" })}</td>
                     <td className="max-w-72 p-2">
-                      <div className="truncate" title={r.description}>
+                      <div className="truncate font-medium" title={r.description}>
                         {r.description}
                       </div>
+                      {r.notes && (
+                        <div className="truncate text-[10px] text-slate-400" title={r.notes}>
+                          {r.notes}
+                        </div>
+                      )}
                     </td>
                     <td className="whitespace-nowrap p-2 text-end">
                       <Money fils={r.amountFils} strong signColor />

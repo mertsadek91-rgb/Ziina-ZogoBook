@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { accountBalance, partnerStatements, periodReport, validateEntry, type AccountLite, type EntryLite, type SaleLite } from "@/lib/ledger-calc";
-import { guessColumns, parseAmount, parseBankDate, parseStatement, suggestBooking } from "@/lib/bank-csv";
+import { guessColumns, lineText, parseAmount, parseBankDate, parseStatement, suggestBooking } from "@/lib/bank-csv";
 
 const d = (s: string) => new Date(`${s}T12:00:00+04:00`);
 
@@ -128,17 +128,48 @@ describe("bank statement CSV", () => {
       { Date: "24/09/2026", Description: "ZIINA FZ LLC payout", Debit: "", Credit: "2,423.97", Balance: "3,000.00" },
       { Date: "25/09/2026", Description: "Transfer to MERT SADEK", Debit: "1,000.00", Credit: "", Balance: "2,000.00" },
       { Date: "25/09/2026", Description: "Card fee", Debit: "5.00", Credit: "", Balance: "1,995.00" },
-      { Date: "25/09/2026", Description: "Card fee", Debit: "5.00", Credit: "", Balance: "1,995.00" },
+      { Date: "25/09/2026", Description: "Card fee", Debit: "5.00", Credit: "", Balance: "1,990.00" },
       { Date: "", Description: "", Debit: "", Credit: "", Balance: "" },
     ];
     const map = guessColumns(Object.keys(recs[0]));
     const r = parseStatement(recs, map);
     expect(r.problems).toEqual([]);
     expect(r.lines.map((l) => l.amountFils)).toEqual([242397, -100000, -500, -500]);
-    expect(r.closingBalanceFils).toBe(199500);
+    expect(r.closingBalanceFils).toBe(199000);
+    expect(r.openingBalanceFils).toBe(57603);
     expect(new Set(r.lines.map((l) => l.externalId)).size).toBe(4);
+    // Identical lines (same day, amount, text) with different balances stay distinct transactions.
     // Same file parsed again → same ids (so re-import is detected as duplicate).
     expect(parseStatement(recs, map).lines.map((l) => l.externalId)).toEqual(r.lines.map((l) => l.externalId));
+  });
+
+  it("reads the Wio Business export: reference ids, N/A cells, notes, Fees type, balance chain", () => {
+    const H = ["Account name", "Account type", "Account IBAN", "Account number", "Card number", "Account currency", "Transaction type", "Date", "Ref. number", "Description", "Amount", "Balance", "Original ref. number", "Notes"];
+    const row = (v: string[]) => Object.fromEntries(H.map((h, i) => [h, v[i] ?? ""]));
+    const base = ["foxstrik - F.Z.E", "Current", "AE00", "95", "N/A", "AED"];
+    // Newest first on purpose: the parser must restore chronological order.
+    const recs = [
+      row([...base, "Fees", "2026-09-25", "305588911", "Subscription fee for Sep 2026", "-99.00", "482.00", "N/A", "Essential"]),
+      row([...base, "Transfers", "2026-09-11", "299445357", "To Mert Sadek", "-581.00", "0.00", "N/A", "Transfer money to the my account"]),
+      row([...base, "Transfers", "2026-09-05", "296889750", "From ZIINA PAYMENT LLC  CLIENT MONEY", "581.00", "581.00", "N/A", "Cash out transfer for operation 6f37"]),
+    ];
+    const map = guessColumns(H);
+    expect(map).toEqual({
+      date: "Date", description: "Description", amount: "Amount", balance: "Balance",
+      reference: "Ref. number", notes: "Notes", type: "Transaction type",
+    });
+    const r = parseStatement(recs, map);
+    expect(r.lines.map((l) => l.date.slice(0, 10))).toEqual(["2026-09-05", "2026-09-11", "2026-09-25"]);
+    expect(r.lines.map((l) => l.externalId)).toEqual(["bank:ref:296889750", "bank:ref:299445357", "bank:ref:305588911"]);
+    expect(r.openingBalanceFils).toBe(0);
+    expect(r.closingBalanceFils).toBe(48200);
+    // 0 → 581 → 0 → −99 ≠ 482: a missing line between 11 and 25 Sep is reported.
+    expect(r.problems).toHaveLength(1);
+    expect(r.problems[0]).toContain("2026-09-25");
+    expect(lineText(r.lines[0])).toBe("From ZIINA PAYMENT LLC  CLIENT MONEY — Cash out transfer for operation 6f37");
+    const ctx = { bankAccountId: "w", gatewayAccountId: "z", partners: [{ id: "m", name: "Mert Sadek" }] };
+    expect(r.lines.map((l) => suggestBooking(l, ctx).kind)).toEqual(["transfer", "transfer", "bank_fee"]);
+    expect(suggestBooking({ ...r.lines[2], description: "Wio plan" }, ctx).kind).toBe("bank_fee"); // via type "Fees"
   });
 
   it("suggests bookings: Ziina payout, partner transfer both ways, fee, ads, other", () => {
