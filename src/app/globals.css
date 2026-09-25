@@ -33,6 +33,16 @@ body {
   display: inline-block;
 }
 
+/* On table cells, .num must not change the cell itself: inline-block breaks the table layout
+   (cells stop lining up under their headers) and direction:ltr flips text-start/end against the
+   header in RTL. Keep the page direction for alignment; order the content by its own text. */
+td.num,
+th.num {
+  display: table-cell;
+  direction: inherit;
+  unicode-bidi: plaintext;
+}
+
 /* Custom subtle scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

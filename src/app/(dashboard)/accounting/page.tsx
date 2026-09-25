@@ -412,11 +412,21 @@ export default function AccountingOverview() {
                 })}
               </ul>
 
-              <div className="flex items-center justify-between rounded-xl bg-slate-50/80 p-3 text-xs text-slate-600 border border-slate-100">
-                <span className="flex items-center gap-1.5 font-semibold">
-                  <Banknote className="h-4 w-4 text-slate-500" /> {a.withdrawals}
-                </span>
-                <Money fils={r.gatewayWithdrawals} strong />
+              <div className="space-y-1.5 rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-xs text-slate-600">
+                {r.withdrawalsByGateway.map((w) => (
+                  <div key={w.accountId} className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <Banknote className="h-4 w-4 text-slate-500" /> {a.withdrawn_from} {w.name} {a.to_bank}
+                    </span>
+                    <Money fils={w.amount} strong />
+                  </div>
+                ))}
+                {r.withdrawalsByGateway.length > 1 && (
+                  <div className="flex items-center justify-between border-t border-slate-200 pt-1.5 font-bold text-slate-800">
+                    <span>{a.withdrawals}</span>
+                    <Money fils={r.gatewayWithdrawals} strong />
+                  </div>
+                )}
               </div>
             </Card>
 

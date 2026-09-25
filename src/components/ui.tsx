@@ -164,7 +164,7 @@ export function KpiCard({
   return (
     <Component
       onClick={onClick}
-      className={`group relative flex w-full flex-col justify-between overflow-hidden rounded-2xl border p-4 text-start transition-all duration-200 ${
+      className={`group relative flex w-full flex-col overflow-hidden rounded-2xl border p-4 text-start transition-all duration-200 ${
         active
           ? "border-brand bg-brand-50/40 ring-2 ring-brand/20 shadow-xs"
           : "border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-xs"
@@ -180,7 +180,10 @@ export function KpiCard({
         <div className="num text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">{value}</div>
         {badge}
       </div>
-      {subtext && <div className="num mt-1 text-[11px] font-medium text-slate-400">{subtext}</div>}
+      {/* Always reserve two lines: values stay on the same line across cards with or without a subtext. */}
+      <div dir="auto" className="mt-1 min-h-8 text-[11px] font-medium leading-4 text-slate-400">
+        {subtext}
+      </div>
     </Component>
   );
 }

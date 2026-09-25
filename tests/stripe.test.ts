@@ -118,6 +118,10 @@ describe("Stripe in accounting", () => {
     ]);
     expect(r.gatewayFees).toBe(1390);
     expect(r.gatewayWithdrawals).toBe(358);
+    expect(r.withdrawalsByGateway).toEqual([
+      { accountId: "z", name: "Ziina", amount: 0 },
+      { accountId: "s", name: "Stripe", amount: 358 },
+    ]);
   });
 
   it("classifies the Wio line for a Stripe payout as a transfer from Stripe", () => {

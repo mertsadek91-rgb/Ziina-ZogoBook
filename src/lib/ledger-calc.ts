@@ -102,6 +102,7 @@ export interface PeriodReport {
   expensesByCategory: { category: string; amount: number }[];
   netProfit: number;
   gatewayWithdrawals: number; // gateway → bank transfers
+  withdrawalsByGateway: { accountId: string; name: string; amount: number }[]; // per gateway account
   partners: PartnerSummary[];
   partnersNet: number;
   retained: number; // profit left in the company after partner transfers
@@ -166,6 +167,17 @@ export function periodReport(
     expensesByCategory: [...byCat.entries()].map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount),
     netProfit,
     gatewayWithdrawals,
+    withdrawalsByGateway: accounts
+      .filter((a) => a.kind === "gateway")
+      .map((a) => ({
+        accountId: a.id,
+        name: a.name,
+        amount: sum(
+          es
+            .filter((e) => e.kind === "transfer" && e.fromAccountId === a.id && kindOf.get(e.toAccountId ?? "") !== "partner")
+            .map((e) => e.amountFils),
+        ),
+      })),
     partners,
     partnersNet,
     retained: netProfit - partnersNet,
