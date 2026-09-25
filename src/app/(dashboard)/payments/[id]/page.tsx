@@ -47,6 +47,7 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
     zohoCandidates: p.zohoCandidates,
     lastError: p.lastError,
     liveMode: process.env.ZIINA_TEST_MODE !== "true",
+    partnerAccountId: p.partnerAccountId,
     logs: p.logs.map((l) => ({
       id: l.id,
       step: l.step,

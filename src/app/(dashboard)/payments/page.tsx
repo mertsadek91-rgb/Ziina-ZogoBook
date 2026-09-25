@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { TABS, tabOf, whereForTab, type Tab } from "@/lib/status";
 import { PaymentsView } from "./PaymentsView";
+import { listAccounts } from "@/lib/ledger";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,10 @@ export default async function PaymentsPage({
     source: p.source,
     candidateCount: p.zohoCandidateCount,
     checkedAt: p.zohoCheckedAt?.toISOString() ?? null,
+    partnerAccountId: p.partnerAccountId,
   }));
+
+  const partners = (await listAccounts()).filter((a) => a.kind === "partner").map((a) => ({ id: a.id, name: a.name }));
 
   return (
     <PaymentsView
@@ -97,6 +101,7 @@ export default async function PaymentsPage({
       initialTo={sp.to || ""}
       counts={counts}
       visibleTestCount={visibleTestCount}
+      partners={partners}
       payments={serializedPayments}
     />
   );

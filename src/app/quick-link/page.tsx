@@ -8,6 +8,8 @@ import { LinkResult } from "@/components/LinkResult";
 import { api } from "@/components/fetcher";
 import { formatMoney } from "@/lib/money";
 import { CurrencyHint, CurrencySelect } from "@/components/CurrencySelect";
+import { PartnerSelect } from "@/components/ledger";
+import { useAcc } from "@/lib/i18n-acc";
 import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 
 const PRESETS = [100, 250, 500, 1000, 2500];
@@ -16,6 +18,8 @@ export default function QuickLinkPage() {
   const { t, lang, dir } = useI18n();
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("AED");
+  const [partnerId, setPartnerId] = useState("");
+  const { a } = useAcc();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -27,7 +31,7 @@ export default function QuickLinkPage() {
     setError("");
     try {
       const r = await api<{ payment: { redirectUrl: string; amountFils: number; currency: string } }>("/api/payments", {
-        body: { amount, currency, message: message || undefined },
+        body: { amount, currency, message: message || undefined, partnerAccountId: partnerId || null },
       });
       setResult({
         url: r.payment.redirectUrl,
@@ -129,6 +133,10 @@ export default function QuickLinkPage() {
           </div>
 
           <CurrencyHint currency={currency} />
+          <div>
+            <label>{a.partner}</label>
+            <PartnerSelect value={partnerId} onChange={setPartnerId} />
+          </div>
 
           <div>
             <label>{t.message_label} ({t.optional})</label>

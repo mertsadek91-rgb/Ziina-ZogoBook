@@ -31,6 +31,7 @@ interface PaymentsViewProps {
   counts: Record<string, { n: number; sum: number }>;
   visibleTestCount: number;
   payments: Row[];
+  partners: { id: string; name: string }[];
 }
 
 export function PaymentsView({
@@ -41,6 +42,7 @@ export function PaymentsView({
   counts,
   visibleTestCount,
   payments,
+  partners,
 }: PaymentsViewProps) {
   const router = useRouter();
   const { t, lang } = useI18n();
@@ -314,7 +316,7 @@ export function PaymentsView({
       </div>
 
       {/* Main Payments Table */}
-      <PaymentsTable payments={payments} tab={tab} />
+      <PaymentsTable payments={payments} tab={tab} partners={partners} />
     </div>
   );
 }

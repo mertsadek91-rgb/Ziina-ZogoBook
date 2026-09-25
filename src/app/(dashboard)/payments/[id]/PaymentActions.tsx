@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { Alert, Button, Card } from "@/components/ui";
 import { ItemPicker } from "@/components/ItemPicker";
+import { PartnerSelect } from "@/components/ledger";
+import { useAcc } from "@/lib/i18n-acc";
 import { api } from "@/components/fetcher";
 import { useI18n } from "@/lib/i18n";
 
@@ -38,6 +40,7 @@ interface P {
   archived: boolean;
   liveMode: boolean;
   orderNumber: string;
+  partnerAccountId: string;
 }
 
 export function PaymentActions({ payment }: { payment: P }) {
@@ -50,6 +53,24 @@ export function PaymentActions({ payment }: { payment: P }) {
     phone: payment.customerPhone,
   });
   const [orderNumber, setOrderNumber] = useState(payment.orderNumber);
+  const { a } = useAcc();
+  const [partnerId, setPartnerId] = useState(payment.partnerAccountId);
+  const [partnerSaved, setPartnerSaved] = useState(false);
+
+  // The partner only affects accounting, so it can be changed at any time (even after invoicing).
+  async function changePartner(id: string) {
+    const prev = partnerId;
+    setPartnerId(id);
+    setPartnerSaved(false);
+    try {
+      await api(`/api/payments/${payment.id}`, { method: "PATCH", body: { partnerAccountId: id || null } });
+      setPartnerSaved(true);
+      setTimeout(() => setPartnerSaved(false), 1500);
+    } catch (e) {
+      setPartnerId(prev);
+      setMsg({ tone: "error", text: e instanceof Error ? e.message : String(e) });
+    }
+  }
   const [item, setItem] = useState({ id: payment.zohoItemId, name: payment.zohoItemName });
   const [date, setDate] = useState(payment.paidDate);
   const [sendEmail, setSendEmail] = useState(false);
@@ -170,6 +191,15 @@ export function PaymentActions({ payment }: { payment: P }) {
         <Alert tone="warning">{t.payment_test_blocked_notice}</Alert>
       )}
       {!completed && <Alert tone="info">{t.payment_incomplete_notice}</Alert>}
+
+      {/* Partner entitled to this payment (accounting) */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-brand/20 bg-brand-50/40 p-3">
+        <span className="text-xs font-bold text-slate-700">{a.partner}</span>
+        <div className="w-56">
+          <PartnerSelect value={partnerId} onChange={changePartner} compact />
+        </div>
+        {partnerSaved && <span className="text-xs font-semibold text-emerald-600">✓ {a.saved}</span>}
+      </div>
 
       {/* Customer Information Fields */}
       <div className="space-y-3">

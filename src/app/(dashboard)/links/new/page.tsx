@@ -21,6 +21,8 @@ import { LinkResult } from "@/components/LinkResult";
 import { api } from "@/components/fetcher";
 import { decimalsOf, formatMoney, toMinor } from "@/lib/money";
 import { CurrencyHint, CurrencySelect } from "@/components/CurrencySelect";
+import { PartnerSelect } from "@/components/ledger";
+import { useAcc } from "@/lib/i18n-acc";
 import { useI18n } from "@/lib/i18n";
 
 interface Created {
@@ -35,6 +37,8 @@ export default function NewLinkPage() {
   const { t, lang, dir } = useI18n();
   const [currency, setCurrency] = useState("AED");
   const [allowTips, setAllowTips] = useState(false);
+  const [partnerId, setPartnerId] = useState("");
+  const { a } = useAcc();
   const [form, setForm] = useState({
     amount: "",
     message: "",
@@ -57,7 +61,7 @@ export default function NewLinkPage() {
     setError("");
     try {
       const r = await api<{ payment: Created }>("/api/payments", {
-        body: { ...form, currency, allowTips, expiryHours: form.expiryHours || undefined },
+        body: { ...form, currency, allowTips, partnerAccountId: partnerId || null, expiryHours: form.expiryHours || undefined },
       });
       setCreated(r.payment);
     } catch (err) {
@@ -160,6 +164,10 @@ export default function NewLinkPage() {
                 </div>
 
                 <CurrencyHint currency={currency} />
+                <div>
+                  <label>{a.partner}</label>
+                  <PartnerSelect value={partnerId} onChange={setPartnerId} />
+                </div>
 
                 <label className="flex items-center gap-2.5 text-xs font-semibold text-slate-700 cursor-pointer pt-1">
                   <input

@@ -6,6 +6,7 @@ import { CURRENCIES, MIN_AMOUNT_FILS, toMinor } from "@/lib/money";
 import { whereForTab, type Tab } from "@/lib/status";
 import { env } from "@/lib/env";
 import { jsonError } from "@/lib/api";
+import { assertPartner } from "@/lib/partners";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -31,6 +32,7 @@ const CreateSchema = z.object({
   notes: z.string().max(1000).optional(),
   expiryHours: z.coerce.number().min(0).max(24 * 90).optional(),
   test: z.boolean().optional(),
+  partnerAccountId: z.string().optional().nullable(),
 });
 
 export async function POST(req: Request) {
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
     if (amountFils <= 0) throw new Error("المبلغ غير صالح");
     if (input.currency === "AED" && amountFils < MIN_AMOUNT_FILS) throw new Error("الحد الأدنى للمبلغ هو 2 درهم");
 
+    const partnerAccountId = await assertPartner(input.partnerAccountId);
     const test = input.test ?? env.ziinaTestMode();
     const pi = await createPaymentIntent({
       amountFils,
@@ -59,6 +62,7 @@ export async function POST(req: Request) {
         customerEmail: input.customerEmail || null,
         customerPhone: input.customerPhone || null,
         notes: input.notes || null,
+        partnerAccountId,
         source: "api",
         test,
       },

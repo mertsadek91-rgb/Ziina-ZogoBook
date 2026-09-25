@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { jsonError } from "@/lib/api";
 import { normalizeOrderNumber } from "@/lib/order";
+import { assertPartner } from "@/lib/partners";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,6 +21,7 @@ const PatchSchema = z.object({
   customerPhone: z.string().max(40).nullable().optional(),
   notes: z.string().max(1000).nullable().optional(),
   orderNumber: z.string().max(40).nullable().optional(),
+  partnerAccountId: z.string().nullable().optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -32,6 +34,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         ...data,
         customerEmail: data.customerEmail === "" ? null : data.customerEmail,
         ...(data.orderNumber !== undefined ? { orderNumber: normalizeOrderNumber(data.orderNumber) } : {}),
+        ...(data.partnerAccountId !== undefined ? { partnerAccountId: await assertPartner(data.partnerAccountId) } : {}),
       },
     });
     return NextResponse.json({ payment });

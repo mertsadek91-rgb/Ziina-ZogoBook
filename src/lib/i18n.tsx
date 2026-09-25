@@ -15,6 +15,7 @@ export interface Translations {
   nav_quick_link: string;
   nav_import: string;
   nav_settings: string;
+  nav_accounting: string;
   nav_logout: string;
   nav_collapse: string;
   nav_expand: string;
@@ -263,6 +264,7 @@ const AR_TRANSLATIONS: Translations = {
   nav_quick_link: "رابط سريع",
   nav_import: "استيراد",
   nav_settings: "الإعدادات",
+  nav_accounting: "المحاسبة",
   nav_logout: "خروج",
   nav_collapse: "طي القائمة",
   nav_expand: "توسيع القائمة",
@@ -497,6 +499,7 @@ const EN_TRANSLATIONS: Translations = {
   nav_quick_link: "Quick Link",
   nav_import: "Import",
   nav_settings: "Settings",
+  nav_accounting: "Accounting",
   nav_logout: "Sign Out",
   nav_collapse: "Collapse sidebar",
   nav_expand: "Expand sidebar",

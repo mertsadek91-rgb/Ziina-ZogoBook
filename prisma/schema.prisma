@@ -38,6 +38,10 @@ model Payment {
   test     Boolean @default(false)
   archived Boolean @default(false) // hidden from lists, totals and Zoho checks (e.g. test payments)
 
+  // Partner entitled to this payment (accounting: partner statements)
+  partnerAccountId String?
+  partner          LedgerAccount? @relation(fields: [partnerAccountId], references: [id], onDelete: SetNull)
+
   // Zoho Books
   zohoStatus        String    @default("not_synced") @db.VarChar(20) // not_synced | contact_ready | invoiced | paid | error
   zohoContactId     String?   @db.VarChar(40)
@@ -64,6 +68,7 @@ model Payment {
   @@index([zohoStatus])
   @@index([createdAt])
   @@index([archived])
+  @@index([partnerAccountId])
 }
 
 model SyncLog {
@@ -81,4 +86,45 @@ model SyncLog {
 model Setting {
   key   String @id @db.VarChar(100)
   value String @db.Text
+}
+
+// ---------- Simple accounting (see src/lib/ledger.ts) ----------
+
+model LedgerAccount {
+  id                   String    @id @default(cuid())
+  key                  String?   @unique @db.VarChar(40) // system accounts: ziina, wio, partner_mert, partner_nawras
+  name                 String    @db.VarChar(120)
+  kind                 String    @db.VarChar(20) // gateway | bank | partner
+  openingFils          Int       @default(0)
+  openingDate          DateTime?
+  statementBalanceFils Int?      // last closing balance read from an imported bank statement
+  statementDate        DateTime?
+  active               Boolean   @default(true)
+  sortOrder            Int       @default(0)
+  createdAt            DateTime  @default(now())
+
+  outgoing LedgerEntry[] @relation("fromAccount")
+  incoming LedgerEntry[] @relation("toAccount")
+  payments Payment[]
+}
+
+model LedgerEntry {
+  id            String         @id @default(cuid())
+  date          DateTime
+  kind          String         @db.VarChar(20) // transfer | expense | bank_fee | income
+  amountFils    Int            // always positive, AED
+  feeFils       Int            @default(0) // fee charged on a transfer (added to bank fees)
+  fromAccountId String?
+  fromAccount   LedgerAccount? @relation("fromAccount", fields: [fromAccountId], references: [id])
+  toAccountId   String?
+  toAccount     LedgerAccount? @relation("toAccount", fields: [toAccountId], references: [id])
+  category      String?        @db.VarChar(60)
+  description   String?        @db.Text
+  reference     String?        @db.VarChar(120)
+  source        String         @default("manual") @db.VarChar(20) // manual | bank_csv
+  externalId    String?        @unique @db.VarChar(80) // dedupe key for imported statement lines
+  createdAt     DateTime       @default(now())
+
+  @@index([date])
+  @@index([kind])
 }

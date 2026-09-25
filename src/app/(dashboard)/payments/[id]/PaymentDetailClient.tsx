@@ -67,6 +67,7 @@ interface PaymentData {
   lastError: string | null;
   logs: LogItem[];
   liveMode: boolean;
+  partnerAccountId: string | null;
 }
 
 export function PaymentDetailClient({ payment }: { payment: PaymentData }) {
@@ -292,6 +293,7 @@ export function PaymentDetailClient({ payment }: { payment: PaymentData }) {
               archived: payment.archived,
               liveMode: payment.liveMode,
               orderNumber: payment.orderNumber ?? "",
+              partnerAccountId: payment.partnerAccountId ?? "",
             }}
           />
 

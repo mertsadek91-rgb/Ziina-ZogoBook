@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Inbox,
   CheckSquare,
@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { Alert, Badge, Button, ziinaTone, zohoTone } from "@/components/ui";
 import { ItemPicker } from "@/components/ItemPicker";
+import { PartnerSelect } from "@/components/ledger";
+import { useAcc } from "@/lib/i18n-acc";
 import { api } from "@/components/fetcher";
 import { formatMoney } from "@/lib/money";
 import { type Tab } from "@/lib/status";
@@ -45,12 +47,21 @@ export interface Row {
   source: string;
   candidateCount: number;
   checkedAt: string | null;
+  partnerAccountId: string | null;
 }
 
 const fmtDate = (s: string) =>
   new Date(s).toLocaleString("en-GB", { timeZone: "Asia/Dubai", dateStyle: "short", timeStyle: "short" });
 
-export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) {
+export function PaymentsTable({
+  payments,
+  tab,
+  partners = [],
+}: {
+  payments: Row[];
+  tab: Tab;
+  partners?: { id: string; name: string }[];
+}) {
   const router = useRouter();
   const { t, lang, dir } = useI18n();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -59,6 +70,41 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
   const [sendEmail, setSendEmail] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "error" | "success"; text: string } | null>(null);
+  const { a } = useAcc();
+
+  // Partner assignment (accounting): kept locally so the select updates instantly.
+  const [partnerOf, setPartnerOf] = useState<Record<string, string>>({});
+  useEffect(() => {
+    setPartnerOf(Object.fromEntries(payments.map((p) => [p.id, p.partnerAccountId ?? ""])));
+  }, [payments]);
+  const [bulkPartner, setBulkPartner] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const unassigned = payments.filter((p) => p.status === "completed" && !partnerOf[p.id]);
+
+  async function assignPartner(id: string, partnerAccountId: string) {
+    const prev = partnerOf[id] ?? "";
+    setPartnerOf((m) => ({ ...m, [id]: partnerAccountId }));
+    try {
+      await api(`/api/payments/${id}`, { method: "PATCH", body: { partnerAccountId: partnerAccountId || null } });
+    } catch (e) {
+      setPartnerOf((m) => ({ ...m, [id]: prev }));
+      setMsg({ tone: "error", text: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  async function assignAllUnassigned() {
+    if (!bulkPartner || !unassigned.length) return;
+    setAssigning(true);
+    try {
+      await api("/api/payments/assign-partner", { body: { ids: unassigned.map((p) => p.id), partnerAccountId: bulkPartner } });
+      setPartnerOf((m) => ({ ...m, ...Object.fromEntries(unassigned.map((p) => [p.id, bulkPartner])) }));
+      router.refresh();
+    } catch (e) {
+      setMsg({ tone: "error", text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setAssigning(false);
+    }
+  }
 
   const canSync = (p: Row) => p.status === "completed" && p.zohoStatus !== "paid" && p.candidateCount === 0;
   const selectable = payments.filter(canSync);
@@ -120,6 +166,21 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
   return (
     <div className="space-y-4">
       {msg && <Alert tone={msg.tone}>{msg.text}</Alert>}
+
+      {/* Assign every unassigned (paid) payment in this list to one partner */}
+      {partners.length > 0 && unassigned.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50/60 p-3 text-xs">
+          <span className="font-semibold text-amber-800">
+            {a.unassigned_title}: <span className="num">{unassigned.length}</span>
+          </span>
+          <div className="w-48">
+            <PartnerSelect compact partners={partners} value={bulkPartner} onChange={setBulkPartner} />
+          </div>
+          <Button size="sm" variant="secondary" loading={assigning} disabled={!bulkPartner} onClick={assignAllUnassigned}>
+            {a.assign_partner}
+          </Button>
+        </div>
+      )}
 
       {/* Bulk Sync Action Bar */}
       {canBulk && selectable.length > 0 && (
@@ -239,6 +300,13 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
 
               {p.message && <div className="text-xs text-slate-600 line-clamp-2 bg-slate-50 p-2 rounded-xl">{p.message}</div>}
 
+              {partners.length > 0 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="shrink-0 font-semibold text-slate-500">{a.partner}</span>
+                  <PartnerSelect compact partners={partners} value={partnerOf[p.id] ?? ""} onChange={(v) => assignPartner(p.id, v)} />
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Badge tone={ziinaTone(p.status)} dot>
@@ -285,6 +353,7 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
                 <th className="px-4 py-3.5 text-start">{t.col_customer}</th>
                 <th className="px-4 py-3.5 text-start">{t.col_desc}</th>
                 <th className="px-4 py-3.5 text-start">{t.col_amount}</th>
+                <th className="px-4 py-3.5 text-start">{a.partner}</th>
                 <th className="px-4 py-3.5 text-start">{t.col_ziina}</th>
                 <th className="px-4 py-3.5 text-start">{t.col_zoho}</th>
                 <th className="px-4 py-3.5 text-start">{t.col_invoice}</th>
@@ -294,7 +363,7 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
             <tbody className="divide-y divide-slate-100">
               {payments.length === 0 && (
                 <tr>
-                  <td colSpan={canBulk ? 9 : 8} className="py-16 text-center">
+                  <td colSpan={canBulk ? 10 : 9} className="py-16 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <Inbox className="h-10 w-10 text-slate-300 mb-2" />
                       <div className="text-sm font-semibold text-slate-600">{t.no_payments_in_tab}</div>
@@ -346,6 +415,11 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
                     )}
                   </td>
 
+                  <td className="px-4 py-3.5">
+                    <div className="w-36">
+                      <PartnerSelect compact partners={partners} value={partnerOf[p.id] ?? ""} onChange={(v) => assignPartner(p.id, v)} />
+                    </div>
+                  </td>
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <Badge tone={ziinaTone(p.status)} dot pulse={p.status === "pending"}>
                       {getZiinaStatusLabel(p.status)}
