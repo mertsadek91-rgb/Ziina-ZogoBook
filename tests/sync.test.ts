@@ -47,6 +47,7 @@ const zohoState = {
   payments: [] as { payment_id: string; reference_number: string; amount: number }[],
   failPaymentOnce: false,
   calls: [] as string[],
+  lastNotes: "" as string | undefined,
 };
 
 vi.mock("@/lib/zoho", () => {
@@ -66,8 +67,9 @@ vi.mock("@/lib/zoho", () => {
       return c;
     },
     findInvoicesByReference: async (ref: string) => zohoState.invoices.filter((i) => i.reference_number === ref),
-    createInvoice: async (i: { customerId: string; referenceNumber: string; rate: number }) => {
+    createInvoice: async (i: { customerId: string; referenceNumber: string; rate: number; notes?: string }) => {
       zohoState.calls.push(`createInvoice:${i.rate}`);
+      zohoState.lastNotes = i.notes;
       const inv = {
         invoice_id: `inv${zohoState.invoices.length + 1}`,
         invoice_number: `INV-00${zohoState.invoices.length + 1}`,
@@ -207,6 +209,25 @@ describe("syncToZoho", () => {
     const r = await syncToZoho("p1", { itemId: "item1" });
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/اسم العميل/);
+  });
+
+  it("writes the Ziina order number into the invoice notes and saves it", async () => {
+    seed();
+    const r = await syncToZoho("p1", { itemId: "item1", orderNumber: " #333136 " });
+    expect(r.ok).toBe(true);
+    expect(r.payment.orderNumber).toBe("333136");
+    expect(zohoState.lastNotes).toBe("Ziina Order #333136\nZiina payment pi_123");
+  });
+
+  it("refuses test payments in live mode and hidden payments, without marking an error", async () => {
+    seed({ test: true });
+    const r1 = await syncToZoho("p1", { itemId: "item1" });
+    expect(r1.ok).toBe(false);
+    expect(r1.payment.zohoStatus).toBe("not_synced");
+    seed({ archived: true });
+    const r2 = await syncToZoho("p1", { itemId: "item1" });
+    expect(r2.ok).toBe(false);
+    expect(zohoState.calls).toEqual([]);
   });
 
   it("sends the email only when asked", async () => {

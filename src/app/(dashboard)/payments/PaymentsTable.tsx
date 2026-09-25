@@ -18,6 +18,7 @@ export interface Row {
   zohoStatus: string;
   customerName: string | null;
   customerEmail: string | null;
+  orderNumber: string | null;
   message: string | null;
   zohoInvoiceNumber: string | null;
   redirectUrl: string | null;
@@ -142,7 +143,10 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
                 <td className="num p-3 whitespace-nowrap text-gray-600">{fmtDate(p.paidAt ?? p.createdAt)}</td>
                 <td className="p-3">
                   <div className="font-medium">{p.customerName || <span className="text-amber-600">— بدون اسم —</span>}</div>
-                  <div className="num text-xs text-gray-500">{p.customerEmail}</div>
+                  <div className="num text-xs text-gray-500">
+                    {p.orderNumber && <span className="me-2 font-medium text-gray-700">#{p.orderNumber}</span>}
+                    {p.customerEmail}
+                  </div>
                 </td>
                 <td className="max-w-56 truncate p-3 text-gray-600" title={p.message ?? ""}>
                   {p.message}

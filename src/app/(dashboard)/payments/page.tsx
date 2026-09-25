@@ -49,6 +49,7 @@ export default async function PaymentsPage({
     ? {
         OR: [
           { customerName: { contains: q } },
+          { orderNumber: { contains: q.replace(/^#/, "") } },
           { customerEmail: { contains: q } },
           { customerPhone: { contains: q } },
           { message: { contains: q } },
@@ -112,7 +113,7 @@ export default async function PaymentsPage({
         <input type="hidden" name="tab" value={tab} />
         <div className="min-w-56 flex-1">
           <label>بحث</label>
-          <input name="q" defaultValue={q} placeholder="اسم، إيميل، هاتف، مبلغ، رقم فاتورة..." />
+          <input name="q" defaultValue={q} placeholder="اسم، إيميل، هاتف، مبلغ، رقم طلب أو فاتورة..." />
         </div>
         <div>
           <label>من</label>
@@ -136,6 +137,7 @@ export default async function PaymentsPage({
           zohoStatus: p.zohoStatus,
           customerName: p.customerName,
           customerEmail: p.customerEmail,
+          orderNumber: p.orderNumber,
           message: p.message,
           zohoInvoiceNumber: p.zohoInvoiceNumber,
           redirectUrl: p.redirectUrl,

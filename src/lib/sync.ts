@@ -6,6 +6,7 @@ import { matchContact } from "./contacts";
 import { fromFils } from "./money";
 import { reconcile } from "./reconcile";
 import { env } from "./env";
+import { normalizeOrderNumber, zohoNote } from "./order";
 
 export class MatchReviewError extends Error {
   constructor(count: number) {
@@ -19,6 +20,7 @@ export interface SyncOptions {
   sendEmail?: boolean; // default false
   date?: string; // yyyy-mm-dd override, defaults to payment date
   customer?: { name?: string; email?: string; phone?: string };
+  orderNumber?: string; // Ziina app order number, written into the invoice notes
 }
 
 export interface SyncResult {
@@ -74,14 +76,15 @@ export async function syncToZoho(paymentId: string, opts: SyncOptions): Promise<
   }
 
   try {
-    // Customer details edited in the form are saved first.
-    if (opts.customer) {
+    // Customer details / order number edited in the form are saved first.
+    if (opts.customer || opts.orderNumber !== undefined) {
       p = await prisma.payment.update({
         where: { id: p.id },
         data: {
-          customerName: opts.customer.name?.trim() || p.customerName,
-          customerEmail: opts.customer.email?.trim() || p.customerEmail,
-          customerPhone: opts.customer.phone?.trim() || p.customerPhone,
+          customerName: opts.customer?.name?.trim() || p.customerName,
+          customerEmail: opts.customer?.email?.trim() || p.customerEmail,
+          customerPhone: opts.customer?.phone?.trim() || p.customerPhone,
+          orderNumber: opts.orderNumber !== undefined ? normalizeOrderNumber(opts.orderNumber) : p.orderNumber,
         },
       });
     }
@@ -151,7 +154,7 @@ export async function syncToZoho(paymentId: string, opts: SyncOptions): Promise<
           itemId: opts.itemId,
           rate: amount,
           description: p.message,
-          notes: `Ziina payment ${reference}`,
+          notes: zohoNote(reference, p.orderNumber),
         });
         await zoho.markInvoiceSent(invoice.invoice_id);
         await log(p.id, step, true, `تم إنشاء الفاتورة: ${invoice.invoice_number}`);
@@ -185,7 +188,7 @@ export async function syncToZoho(paymentId: string, opts: SyncOptions): Promise<
           date,
           referenceNumber: reference,
           accountId: await getSetting("zoho_deposit_account_id"),
-          description: `Ziina payment ${reference}`,
+          description: zohoNote(reference, p.orderNumber),
         });
         await log(p.id, step, true, `تم تسجيل الدفعة: ${payment.payment_id}`);
       }

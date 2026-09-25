@@ -22,6 +22,7 @@ interface P {
   test: boolean;
   archived: boolean;
   liveMode: boolean;
+  orderNumber: string;
 }
 
 export function PaymentActions({ payment }: { payment: P }) {
@@ -31,6 +32,7 @@ export function PaymentActions({ payment }: { payment: P }) {
     email: payment.customerEmail,
     phone: payment.customerPhone,
   });
+  const [orderNumber, setOrderNumber] = useState(payment.orderNumber);
   const [item, setItem] = useState({ id: payment.zohoItemId, name: payment.zohoItemName });
   const [date, setDate] = useState(payment.paidDate);
   const [sendEmail, setSendEmail] = useState(false);
@@ -60,7 +62,7 @@ export function PaymentActions({ payment }: { payment: P }) {
   const sync = () =>
     run("sync", async () => {
       const r = await api<{ ok: boolean; error?: string }>(`/api/payments/${payment.id}/sync`, {
-        body: { itemId: item.id, itemName: item.name, sendEmail, date, customer },
+        body: { itemId: item.id, itemName: item.name, sendEmail, date, customer, orderNumber },
       });
       if (!r.ok) throw new Error(r.error);
       return "تم إصدار الفاتورة وتسجيل الدفعة في Zoho Books بنجاح";
@@ -79,9 +81,9 @@ export function PaymentActions({ payment }: { payment: P }) {
     run("save", async () => {
       await api(`/api/payments/${payment.id}`, {
         method: "PATCH",
-        body: { customerName: customer.name, customerEmail: customer.email, customerPhone: customer.phone },
+        body: { customerName: customer.name, customerEmail: customer.email, customerPhone: customer.phone, orderNumber },
       });
-      return "تم حفظ بيانات العميل";
+      return "تم حفظ البيانات";
     });
 
   return (
@@ -137,7 +139,17 @@ export function PaymentActions({ payment }: { payment: P }) {
       )}
       {!completed && <Alert tone="info">لا يمكن إصدار الفاتورة قبل اكتمال الدفع في Ziina.</Alert>}
 
-      <fieldset className="grid gap-3 sm:grid-cols-3">
+      <fieldset className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <label>رقم الطلب في Ziina</label>
+          <input
+            dir="ltr"
+            placeholder="#333136"
+            value={orderNumber}
+            disabled={done}
+            onChange={(e) => setOrderNumber(e.target.value)}
+          />
+        </div>
         <div>
           <label>اسم العميل *</label>
           <input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
@@ -158,7 +170,7 @@ export function PaymentActions({ payment }: { payment: P }) {
       </fieldset>
       {!done && (
         <Button variant="ghost" loading={busy === "save"} onClick={saveCustomer}>
-          حفظ بيانات العميل فقط
+          حفظ البيانات فقط
         </Button>
       )}
 
@@ -180,7 +192,7 @@ export function PaymentActions({ payment }: { payment: P }) {
             </label>
           </div>
           <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
-            سيتم: البحث عن العميل في Zoho (إيميل ← هاتف ← اسم) أو إنشاؤه، ثم إنشاء فاتورة بمرجع رقم دفعة Ziina، ثم تسجيل
+            رقم الطلب (إن أُدخل) يُكتب في ملاحظات الفاتورة. سيتم: البحث عن العميل في Zoho (إيميل ← هاتف ← اسم) أو إنشاؤه، ثم إنشاء فاتورة بمرجع رقم دفعة Ziina، ثم تسجيل
             الدفعة عليها مع رسوم Ziina كرسوم بنكية. العملية آمنة للتكرار ولن تُنشئ فواتير مكررة.
           </div>
           <Button loading={busy === "sync"} disabled={!item.id || (!customer.name && !customer.email)} onClick={sync}>

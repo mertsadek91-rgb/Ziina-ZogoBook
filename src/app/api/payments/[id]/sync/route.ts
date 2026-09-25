@@ -12,6 +12,7 @@ const SyncSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional()
     .or(z.literal("")),
+  orderNumber: z.string().max(40).optional(),
   customer: z
     .object({
       name: z.string().max(200).optional(),

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { jsonError } from "@/lib/api";
+import { normalizeOrderNumber } from "@/lib/order";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,6 +19,7 @@ const PatchSchema = z.object({
   customerEmail: z.string().email().nullable().optional().or(z.literal("")),
   customerPhone: z.string().max(40).nullable().optional(),
   notes: z.string().max(1000).nullable().optional(),
+  orderNumber: z.string().max(40).nullable().optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +28,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const data = PatchSchema.parse(await req.json());
     const payment = await prisma.payment.update({
       where: { id },
-      data: { ...data, customerEmail: data.customerEmail === "" ? null : data.customerEmail },
+      data: {
+        ...data,
+        customerEmail: data.customerEmail === "" ? null : data.customerEmail,
+        ...(data.orderNumber !== undefined ? { orderNumber: normalizeOrderNumber(data.orderNumber) } : {}),
+      },
     });
     return NextResponse.json({ payment });
   } catch (err) {

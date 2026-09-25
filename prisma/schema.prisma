@@ -29,6 +29,7 @@ model Payment {
   customerEmail String? @db.VarChar(200)
   customerPhone String? @db.VarChar(40)
   notes         String? @db.Text
+  orderNumber   String? @db.VarChar(40) // Ziina app order number (entered manually; not exposed by the Ziina API)
 
   source   String  @default("api") @db.VarChar(20) // api | csv | webhook
   test     Boolean @default(false)

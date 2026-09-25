@@ -5,6 +5,20 @@ import { verifyHmac, intentToPaymentFields } from "@/lib/ziina";
 import { tabOf } from "@/lib/status";
 import { matchContact } from "@/lib/contacts";
 import { createSessionToken, verifySessionToken } from "@/lib/auth";
+import { normalizeOrderNumber, zohoNote } from "@/lib/order";
+
+describe("order number", () => {
+  it("normalizes what the user types", () => {
+    expect(normalizeOrderNumber("#333136")).toBe("333136");
+    expect(normalizeOrderNumber("  ##333136 ")).toBe("333136");
+    expect(normalizeOrderNumber("   ")).toBeNull();
+    expect(normalizeOrderNumber(undefined)).toBeNull();
+  });
+  it("builds the Zoho note with or without an order number", () => {
+    expect(zohoNote("pi", "333136")).toBe("Ziina Order #333136\nZiina payment pi");
+    expect(zohoNote("pi", null)).toBe("Ziina payment pi");
+  });
+});
 
 describe("money", () => {
   it("converts AED ↔ fils without float drift", () => {

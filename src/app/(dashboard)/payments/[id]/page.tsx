@@ -26,6 +26,7 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
     ["الإكرامية", <span className="num">{formatMoney(p.tipFils, p.currency)}</span>],
     ["رسوم Ziina", <span className="num">{formatMoney(p.feeFils, p.currency)}</span>],
     ["الصافي", p.settledFils != null ? <span className="num">{formatMoney(p.settledFils, p.currency)}</span> : "—"],
+    ["رقم الطلب", p.orderNumber ? <span className="num">#{p.orderNumber}</span> : "—"],
     ["الوصف", p.message ?? "—"],
     ["تاريخ الإنشاء", <span className="num">{fmt(p.createdAt)}</span>],
     ["تاريخ الدفع", <span className="num">{fmt(p.paidAt)}</span>],
@@ -50,6 +51,7 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
           → الدفعات
         </Link>
         <h1 className="text-xl font-bold">{p.customerName || "دفعة بدون اسم"}</h1>
+        {p.orderNumber && <span className="num text-gray-500">#{p.orderNumber}</span>}
         <Badge tone={ziinaTone(p.status)}>{ZIINA_STATUS_LABEL[p.status] ?? p.status}</Badge>
         <Badge tone={zohoTone(p.zohoStatus)}>{ZOHO_STATUS_LABEL[p.zohoStatus] ?? p.zohoStatus}</Badge>
         {p.test && <Badge tone="yellow">تجريبي</Badge>}
@@ -106,6 +108,7 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
               test: p.test,
               archived: p.archived,
               liveMode: process.env.ZIINA_TEST_MODE !== "true",
+              orderNumber: p.orderNumber ?? "",
             }}
           />
           <Card>
