@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getSetting, setSetting } from "@/lib/db";
 import { registerWebhook, verifyToken } from "@/lib/ziina";
 import { listOrganizations } from "@/lib/zoho";
-import { stripeBalance, stripeConfigured } from "@/lib/stripe";
+import { stripeBalance, stripeConfigured, stripeCursorKey } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { jsonError } from "@/lib/api";
 
@@ -40,7 +40,7 @@ export async function GET() {
             configured: true,
             livemode: stripe.value.livemode,
             currency: stripe.value.available[0]?.currency?.toUpperCase() ?? null,
-            lastSync: await getSetting("stripe_synced_until"),
+            lastSync: await getSetting(stripeCursorKey()),
           }
         : {
             ok: false,

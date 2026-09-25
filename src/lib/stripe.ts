@@ -15,6 +15,16 @@ export function stripeConfigured(): boolean {
   return !!process.env.STRIPE_SECRET_KEY;
 }
 
+/** "live" or "test", from the key prefix (sk_live_ / rk_live_ vs sk_test_ / rk_test_). */
+export function stripeKeyMode(): "live" | "test" {
+  return /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY ?? "") ? "test" : "live";
+}
+
+/** Settings key holding the sync cursor. One per mode, so switching test → live imports the full live history. */
+export function stripeCursorKey(): string {
+  return `stripe_synced_until_${stripeKeyMode()}`;
+}
+
 type Query = Record<string, string | number | undefined | string[]>;
 
 async function get<T>(path: string, query: Query = {}): Promise<T> {

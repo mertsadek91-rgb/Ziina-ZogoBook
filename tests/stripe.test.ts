@@ -117,7 +117,12 @@ describe("Stripe in accounting", () => {
 // ---------- syncStripe with mocked Stripe + DB ----------
 
 const db = { payments: new Map<string, Record<string, unknown>>(), settings: new Map<string, string>(), logs: [] as unknown[] };
-const stripeApi = { txns: [] as StripeBalanceTransaction[], charges: new Map<string, StripeCharge>(), lastSince: undefined as number | undefined };
+const stripeApi = {
+  txns: [] as StripeBalanceTransaction[],
+  charges: new Map<string, StripeCharge>(),
+  lastSince: undefined as number | undefined,
+  mode: "live" as "live" | "test",
+};
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -143,6 +148,7 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/stripe", () => ({
   stripeConfigured: () => true,
+  stripeCursorKey: () => `stripe_synced_until_${stripeApi.mode}`,
   listBalanceTransactions: async (since?: number) => {
     stripeApi.lastSince = since;
     return stripeApi.txns;
@@ -159,6 +165,20 @@ describe("syncStripe", () => {
     db.logs = [];
     stripeApi.txns = [];
     stripeApi.charges.clear();
+    stripeApi.mode = "live";
+  });
+
+  it("keeps a separate cursor per mode: switching a test key for a live key imports the full live history", async () => {
+    stripeApi.mode = "test";
+    stripeApi.txns = [bt({ source: charge({ livemode: false }) })];
+    await syncStripe();
+    expect(db.settings.get("stripe_synced_until_test")).toBe("1790300100");
+    expect([...db.payments.values()][0]).toMatchObject({ test: true });
+
+    stripeApi.mode = "live";
+    stripeApi.txns = [];
+    await syncStripe();
+    expect(stripeApi.lastSince).toBeUndefined(); // no live cursor yet → whole history
   });
 
   it("imports all history first, then only recent days, without duplicates or overwriting local edits", async () => {
@@ -166,7 +186,7 @@ describe("syncStripe", () => {
     const s1 = await syncStripe();
     expect(stripeApi.lastSince).toBeUndefined(); // whole history on first run
     expect(s1).toMatchObject({ fetched: 2, created: 1, updated: 0 });
-    expect(db.settings.get("stripe_synced_until")).toBe("1790300100");
+    expect(db.settings.get("stripe_synced_until_live")).toBe("1790300100");
 
     // The user fixes the customer name and assigns a partner in the app.
     const [p] = [...db.payments.values()];

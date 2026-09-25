@@ -1,5 +1,5 @@
 import { prisma, getSetting, setSetting } from "./db";
-import { getCharge, listBalanceTransactions, stripeConfigured } from "./stripe";
+import { getCharge, listBalanceTransactions, stripeConfigured, stripeCursorKey } from "./stripe";
 import {
   FILL_IF_EMPTY,
   REFUND_TYPES,
@@ -12,7 +12,6 @@ import {
   type StripeSaleFields,
 } from "./stripe-map";
 
-const CURSOR_KEY = "stripe_synced_until";
 const OVERLAP_S = 2 * 86400; // re-read the last two days: upserts make it idempotent
 
 export interface StripeSyncSummary {
@@ -43,7 +42,8 @@ export async function syncStripe(): Promise<StripeSyncSummary> {
   const summary: StripeSyncSummary = { fetched: 0, created: 0, updated: 0, refundsUpdated: 0 };
   if (!stripeConfigured()) return summary;
 
-  const cursor = await getSetting(CURSOR_KEY);
+  const cursorKey = stripeCursorKey();
+  const cursor = await getSetting(cursorKey);
   const since = cursor ? Math.max(0, Number(cursor) - OVERLAP_S) : undefined;
   const txns = await listBalanceTransactions(since);
   summary.fetched = txns.length;
@@ -81,6 +81,6 @@ export async function syncStripe(): Promise<StripeSyncSummary> {
     summary.refundsUpdated++;
   }
 
-  if (maxCreated) await setSetting(CURSOR_KEY, String(maxCreated));
+  if (maxCreated) await setSetting(cursorKey, String(maxCreated));
   return summary;
 }
