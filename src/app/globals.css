@@ -43,6 +43,26 @@ th.num {
   unicode-bidi: plaintext;
 }
 
+/* unicode-bidi: plaintext makes start/end follow the cell's *content* ("287.73 AED" is LTR), so
+   values drifted away from their RTL headers. Pin the alignment to the page direction instead,
+   exactly like the headers: start = right in Arabic, left in English (and end the opposite). */
+[dir="rtl"] td.num,
+[dir="rtl"] th.num {
+  text-align: right;
+}
+[dir="rtl"] td.num.text-end,
+[dir="rtl"] th.num.text-end {
+  text-align: left;
+}
+[dir="ltr"] td.num,
+[dir="ltr"] th.num {
+  text-align: left;
+}
+[dir="ltr"] td.num.text-end,
+[dir="ltr"] th.num.text-end {
+  text-align: right;
+}
+
 /* Custom subtle scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

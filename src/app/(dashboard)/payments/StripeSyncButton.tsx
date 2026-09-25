@@ -59,12 +59,16 @@ export function StripeSyncButton() {
   );
 }
 
-/** Small gateway label used in payment lists. */
+/** Small gateway label used in payment lists (Ziina or Stripe). */
 export function GatewayBadge({ gateway }: { gateway: string }) {
-  if (gateway !== "stripe") return null;
+  const stripe = gateway === "stripe";
   return (
-    <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600 ring-1 ring-indigo-200">
-      Stripe
+    <span
+      className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ring-1 ${
+        stripe ? "bg-indigo-50 text-indigo-600 ring-indigo-200" : "bg-teal-50 text-teal-700 ring-teal-200"
+      }`}
+    >
+      {stripe ? "Stripe" : "Ziina"}
     </span>
   );
 }
