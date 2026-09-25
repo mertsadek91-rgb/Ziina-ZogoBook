@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accountBalance, partnerStatements, periodReport, validateEntry, type AccountLite, type EntryLite, type SaleLite } from "@/lib/ledger-calc";
+import { accountBalance, allocate, partnerStatements, periodReport, validateEntry, type AccountLite, type EntryLite, type SaleLite } from "@/lib/ledger-calc";
 import { guessColumns, lineText, parseAmount, parseBankDate, parseStatement, suggestBooking } from "@/lib/bank-csv";
 
 const d = (s: string) => new Date(`${s}T12:00:00+04:00`);
@@ -74,19 +74,41 @@ describe("accountBalance", () => {
 });
 
 describe("partnerStatements", () => {
-  it("shows what each partner is due, what they received, and a negative remaining when over-paid", () => {
-    const { partners, unassigned } = partnerStatements(ACC, ENTRIES, SALES, new Date("2026-09-30T23:59:59+04:00"));
+  it("deducts shared costs from the base in proportion to each partner's payments", () => {
+    const { partners, unassigned, sharedCosts } = partnerStatements(ACC, ENTRIES, SALES, new Date("2026-09-30T23:59:59+04:00"));
+    // bank fee 15 + transfer fee 5 + expenses 100 + 30 − other income 50 = 100 AED
+    expect(sharedCosts).toBe(10000);
     const mert = partners.find((p) => p.accountId === "m")!;
     const nawras = partners.find((p) => p.accountId === "n")!;
-    // Mert: due 950 from payments, received 1200 → −250 (received more than due)
-    expect(mert).toMatchObject({ paymentsCount: 1, entitledFromPayments: 95000, due: 95000, received: 120000, remaining: -25000 });
-    // Nawras: due 475 + 30 expense paid personally = 505, received 400 → 105 still owed
-    expect(nawras).toMatchObject({ paymentsCount: 1, entitledFromPayments: 47500, expensesPaid: 3000, due: 50500, received: 40000, remaining: 10500 });
+    // Weights 950 : 475 → Mert bears 2/3 (66.67), Nawras 1/3 (33.33); parts add up exactly.
+    expect(mert.costShare + nawras.costShare).toBe(10000);
+    // Mert: 950 − 66.67 = 883.33 due, received 1200 → −316.67 (received more than due)
+    expect(mert).toMatchObject({ entitledFromPayments: 95000, costShare: 6667, due: 88333, received: 120000, remaining: -31667 });
+    // Nawras: 475 + 30 paid personally − 33.33 = 471.67 due, received 400 → 71.67 still owed
+    expect(nawras).toMatchObject({ entitledFromPayments: 47500, expensesPaid: 3000, costShare: 3333, due: 47167, received: 40000, remaining: 7167 });
     expect(unassigned).toEqual({ count: 1, net: 19000 });
   });
-  it("is cumulative up to the date (October sale adds to Mert)", () => {
+
+  it("reconciles with the company: Σ remaining = assigned profit + money partners put in − transfers to them", () => {
+    const to = new Date("2026-09-30T23:59:59+04:00");
+    const { partners, unassigned } = partnerStatements(ACC, ENTRIES, SALES, to);
+    const r = periodReport(ACC, ENTRIES, SALES, null, to);
+    const sum = (k: "remaining" | "expensesPaid" | "paidIn" | "received") => partners.reduce((a, p) => a + p[k], 0);
+    expect(sum("remaining")).toBe(r.netProfit - unassigned.net + sum("expensesPaid") + sum("paidIn") - sum("received"));
+  });
+
+  it("is cumulative up to the date (October sale adds to Mert and shifts the cost split)", () => {
     const { partners } = partnerStatements(ACC, ENTRIES, SALES, null);
-    expect(partners.find((p) => p.accountId === "m")!.remaining).toBe(-25000 + 28500);
+    // weights 1235 : 475 → Mert 72.22, Nawras 27.78
+    expect(partners.find((p) => p.accountId === "m")!).toMatchObject({ costShare: 7222, remaining: 123500 - 7222 - 120000 });
+  });
+
+  it("allocates exactly with largest-remainder rounding", () => {
+    expect(allocate(9542, [102015, 896841])).toEqual([975, 8567]); // the real Sep 2026 case: 95.42 AED
+    expect(allocate(100, [1, 1, 1])).toEqual([34, 33, 33]);
+    expect(allocate(100, [0, 0])).toEqual([50, 50]);
+    expect(allocate(-358, [1, 1])).toEqual([-179, -179]);
+    expect(allocate(0, [5, 7])).toEqual([0, 0]);
   });
 });
 

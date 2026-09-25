@@ -210,6 +210,7 @@ export default function AccountingOverview() {
             <div>
               <h2 className="text-base font-extrabold tracking-tight text-slate-900">{a.partners_title}</h2>
               <p className="text-xs text-slate-500">{a.partners_hint}</p>
+              <p className="text-[11px] text-slate-400">{a.cost_share_hint}</p>
             </div>
 
             {data.statements.unassigned.count > 0 && (
@@ -280,6 +281,7 @@ export default function AccountingOverview() {
                       <Row label={a.from_payments} fils={p.entitledFromPayments} />
                       {p.expensesPaid > 0 && <Row label={a.expenses_paid} fils={p.expensesPaid} />}
                       {p.paidIn > 0 && <Row label={a.paid_in} fils={p.paidIn} />}
+                      {p.costShare !== 0 && <Row label={a.cost_share} fils={-p.costShare} />}
                       <Row label={a.total_due} fils={p.due} strong />
                       <Row label={a.received} fils={-p.received} />
                       <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-2 text-sm">

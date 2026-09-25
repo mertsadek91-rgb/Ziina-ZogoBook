@@ -189,51 +189,84 @@ export interface PartnerStatement {
   entitledFromPayments: number; // net (gross − Ziina fee) of the payments assigned to the partner
   expensesPaid: number; // company expenses the partner paid personally (owed back to them)
   paidIn: number; // money the partner put into the company (owed back to them)
-  due: number; // entitledFromPayments + expensesPaid + paidIn
+  costShare: number; // partner's share of shared costs (bank fees + expenses − other income)
+  due: number; // entitledFromPayments + expensesPaid + paidIn − costShare
   received: number; // transfers from the company to the partner
   remaining: number; // due − received; negative = received more than due
 }
 
 /**
+ * Split `total` base units across weights proportionally, exactly (largest-remainder rounding, so
+ * the parts always add up to the total). Equal split when all weights are zero.
+ */
+export function allocate(total: number, weights: number[]): number[] {
+  if (!weights.length) return [];
+  const w = weights.map((x) => Math.max(0, x));
+  const sumW = w.reduce((a, b) => a + b, 0);
+  const shares = sumW > 0 ? w.map((x) => (total * x) / sumW) : w.map(() => total / w.length);
+  const floors = shares.map((x) => Math.floor(x));
+  let rest = total - floors.reduce((a, b) => a + b, 0);
+  const order = shares.map((x, i) => ({ i, frac: x - Math.floor(x) })).sort((a, b) => b.frac - a.frac);
+  for (let k = 0; rest > 0 && k < order.length; k++, rest--) floors[order[k].i] += 1;
+  return floors;
+}
+
+/**
  * What each partner should receive vs. what they actually received, up to `to` (inclusive).
  * Cumulative from the beginning: a remaining balance only makes sense over the whole history.
+ *
+ * Shared costs (bank & transfer fees, all expenses, minus other income) are taken from the base
+ * before distribution: each partner bears a share proportional to the net of their payments.
+ * With every payment assigned: Σ remaining = net profit + what partners put in (paid in and
+ * expenses paid personally) − what they received.
  */
 export function partnerStatements(
   accounts: AccountLite[],
   entries: EntryLite[],
   sales: SaleLite[],
   to?: Date | null,
-): { partners: PartnerStatement[]; unassigned: { count: number; net: number } } {
+): { partners: PartnerStatement[]; unassigned: { count: number; net: number }; sharedCosts: number } {
   const es = entries.filter((e) => inRange(e.date, null, to));
   const ss = sales.filter((s) => inRange(s.date, null, to));
-  const partnerIds = new Set(accounts.filter((a) => a.kind === "partner").map((a) => a.id));
+  const partnerAccounts = accounts.filter((a) => a.kind === "partner");
+  const partnerIds = new Set(partnerAccounts.map((a) => a.id));
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
-  const partners = accounts
-    .filter((a) => a.kind === "partner")
-    .map((a) => {
-      const mine = ss.filter((x) => x.partnerAccountId === a.id);
-      const entitledFromPayments = sum(mine.map((x) => x.grossFils - x.feeFils));
-      const expensesPaid = sum(es.filter((e) => e.kind === "expense" && e.fromAccountId === a.id).map((e) => e.amountFils));
-      const paidIn = sum(es.filter((e) => e.kind === "transfer" && e.fromAccountId === a.id).map((e) => e.amountFils));
-      const received = sum(es.filter((e) => e.kind === "transfer" && e.toAccountId === a.id).map((e) => e.amountFils));
-      const due = entitledFromPayments + expensesPaid + paidIn;
-      return {
-        accountId: a.id,
-        name: a.name,
-        paymentsCount: mine.length,
-        entitledFromPayments,
-        expensesPaid,
-        paidIn,
-        due,
-        received,
-        remaining: due - received,
-      };
-    });
+  const sharedCosts =
+    sum(es.filter((e) => e.kind === "bank_fee" || e.kind === "expense").map((e) => e.amountFils)) +
+    sum(es.filter((e) => e.kind === "transfer").map((e) => e.feeFils)) -
+    sum(es.filter((e) => e.kind === "income").map((e) => e.amountFils));
+
+  const base = partnerAccounts.map((a) => {
+    const mine = ss.filter((x) => x.partnerAccountId === a.id);
+    return { a, mine, entitledFromPayments: sum(mine.map((x) => x.grossFils - x.feeFils)) };
+  });
+  const shares = allocate(sharedCosts, base.map((b) => b.entitledFromPayments));
+
+  const partners = base.map(({ a, mine, entitledFromPayments }, i) => {
+    const expensesPaid = sum(es.filter((e) => e.kind === "expense" && e.fromAccountId === a.id).map((e) => e.amountFils));
+    const paidIn = sum(es.filter((e) => e.kind === "transfer" && e.fromAccountId === a.id).map((e) => e.amountFils));
+    const received = sum(es.filter((e) => e.kind === "transfer" && e.toAccountId === a.id).map((e) => e.amountFils));
+    const costShare = shares[i];
+    const due = entitledFromPayments + expensesPaid + paidIn - costShare;
+    return {
+      accountId: a.id,
+      name: a.name,
+      paymentsCount: mine.length,
+      entitledFromPayments,
+      expensesPaid,
+      paidIn,
+      costShare,
+      due,
+      received,
+      remaining: due - received,
+    };
+  });
 
   const unassignedSales = ss.filter((x) => !x.partnerAccountId || !partnerIds.has(x.partnerAccountId));
   return {
     partners,
     unassigned: { count: unassignedSales.length, net: sum(unassignedSales.map((x) => x.grossFils - x.feeFils)) },
+    sharedCosts,
   };
 }
