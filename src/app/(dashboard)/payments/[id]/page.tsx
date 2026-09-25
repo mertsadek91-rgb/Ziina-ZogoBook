@@ -23,9 +23,12 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
 
   const rows: [string, React.ReactNode][] = [
     ["المبلغ", <span className="num font-semibold">{formatMoney(p.amountFils, p.currency)}</span>],
+    ...(p.originalAmountFils != null && p.originalCurrency
+      ? ([["دفع العميل", <span className="num">{formatMoney(p.originalAmountFils, p.originalCurrency)}</span>]] as [string, React.ReactNode][])
+      : []),
     ["الإكرامية", <span className="num">{formatMoney(p.tipFils, p.currency)}</span>],
     ["رسوم Ziina", <span className="num">{formatMoney(p.feeFils, p.currency)}</span>],
-    ["الصافي", p.settledFils != null ? <span className="num">{formatMoney(p.settledFils, p.currency)}</span> : "—"],
+    ["الصافي بعد الرسوم", <span className="num">{formatMoney(p.amountFils + p.tipFils - p.feeFils, p.currency)}</span>],
     ["رقم الطلب", p.orderNumber ? <span className="num">#{p.orderNumber}</span> : "—"],
     ["الوصف", p.message ?? "—"],
     ["تاريخ الإنشاء", <span className="num">{fmt(p.createdAt)}</span>],

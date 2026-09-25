@@ -134,21 +134,32 @@ export function verifyHmac(rawBody: string, signature: string | null, secret: st
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-/** Map a Ziina intent to the local Payment columns. */
+/**
+ * Map a Ziina intent to the local Payment columns.
+ * For foreign-card payments `amount`/`currency_code` are in the customer's currency (e.g. SAR/USD),
+ * while `settled` holds what the merchant receives in AED — that is what gets invoiced.
+ * `fee_amount` is already in the settlement currency.
+ */
 export function intentToPaymentFields(pi: ZiinaPaymentIntent) {
   const createdAt =
     typeof pi.created_at === "number" || /^\d+$/.test(String(pi.created_at))
       ? new Date(Number(pi.created_at))
       : new Date(pi.created_at);
+  const settledAmount = pi.settled?.amount;
+  const settledCurrency = pi.settled?.currency_code;
+  const useSettled = settledAmount != null && !!settledCurrency;
+  const foreign = useSettled && settledCurrency !== pi.currency_code;
   return {
-    amountFils: pi.amount,
-    currency: pi.currency_code,
+    amountFils: useSettled ? settledAmount : pi.amount,
+    currency: useSettled ? settledCurrency : pi.currency_code,
+    originalAmountFils: foreign ? pi.amount : null,
+    originalCurrency: foreign ? pi.currency_code : null,
     message: pi.message ?? null,
     status: pi.status,
     redirectUrl: pi.redirect_url ?? null,
     operationId: pi.operation_id ?? null,
     feeFils: pi.fee_amount ?? 0,
-    tipFils: pi.tip_amount ?? 0,
+    tipFils: (useSettled ? pi.settled?.tip_amount : pi.tip_amount) ?? 0,
     settledFils: pi.settled?.amount ?? null,
     cardBrand: pi.card_details?.brand ?? null,
     cardLast4: pi.card_details?.last4 ?? pi.card_details?.last_four ?? null,

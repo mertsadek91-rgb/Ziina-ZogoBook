@@ -133,6 +133,8 @@ export default async function PaymentsPage({
           ziinaIntentId: p.ziinaIntentId,
           amountFils: p.amountFils + p.tipFils,
           currency: p.currency,
+          originalAmountFils: p.originalAmountFils,
+          originalCurrency: p.originalCurrency,
           status: p.status,
           zohoStatus: p.zohoStatus,
           customerName: p.customerName,

@@ -14,6 +14,8 @@ export interface Row {
   ziinaIntentId: string;
   amountFils: number;
   currency: string;
+  originalAmountFils: number | null;
+  originalCurrency: string | null;
   status: string;
   zohoStatus: string;
   customerName: string | null;
@@ -151,7 +153,12 @@ export function PaymentsTable({ payments, tab }: { payments: Row[]; tab: Tab }) 
                 <td className="max-w-56 truncate p-3 text-gray-600" title={p.message ?? ""}>
                   {p.message}
                 </td>
-                <td className="num p-3 font-semibold whitespace-nowrap">{formatMoney(p.amountFils, p.currency)}</td>
+                <td className="num p-3 whitespace-nowrap">
+                  <div className="font-semibold">{formatMoney(p.amountFils, p.currency)}</div>
+                  {p.originalAmountFils != null && p.originalCurrency && (
+                    <div className="text-xs text-gray-500">{formatMoney(p.originalAmountFils, p.originalCurrency)}</div>
+                  )}
+                </td>
                 <td className="p-3">
                   <Badge tone={ziinaTone(p.status)}>{ZIINA_STATUS_LABEL[p.status] ?? p.status}</Badge>
                   {p.test && <span className="ms-1 text-xs text-amber-600">تجريبي</span>}

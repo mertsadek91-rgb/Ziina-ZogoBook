@@ -20,6 +20,9 @@ model Payment {
   feeFils        Int       @default(0)
   tipFils        Int       @default(0)
   settledFils    Int?
+  // What the customer paid in their own currency (e.g. 170.90 SAR); amountFils is always the settled AED amount.
+  originalAmountFils Int?
+  originalCurrency   String?   @db.VarChar(10)
   paidAt         DateTime?
   cardBrand      String?   @db.VarChar(40)
   cardLast4      String?   @db.VarChar(8)
