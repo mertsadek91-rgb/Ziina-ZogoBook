@@ -336,6 +336,7 @@ export function PaymentDetailClient({ payment }: { payment: PaymentData }) {
               liveMode: payment.liveMode,
               orderNumber: payment.orderNumber ?? "",
               partnerAccountId: payment.partnerAccountId ?? "",
+              gateway: payment.gateway,
             }}
           />
 

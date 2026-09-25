@@ -25,6 +25,8 @@ ENV HOSTNAME=0.0.0.0
 # DATABASE_URL (MySQL) is provided by the platform at runtime, e.g. Coolify environment variables.
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+# Files in /public (logo, icons) are not part of the standalone output.
+COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma

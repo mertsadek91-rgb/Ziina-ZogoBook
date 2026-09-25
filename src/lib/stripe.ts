@@ -22,7 +22,8 @@ export function stripeKeyMode(): "live" | "test" {
 
 /** Settings key holding the sync cursor. One per mode, so switching test → live imports the full live history. */
 export function stripeCursorKey(): string {
-  return `stripe_synced_until_${stripeKeyMode()}`;
+  // "_v2": bumped when a new field is filled from Stripe (order number) → one full, idempotent re-sync.
+  return `stripe_synced_until_${stripeKeyMode()}_v2`;
 }
 
 type Query = Record<string, string | number | undefined | string[]>;

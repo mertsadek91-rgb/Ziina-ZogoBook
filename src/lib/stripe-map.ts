@@ -75,6 +75,25 @@ export function refundedInSettlement(btAmount: number, c: StripeCharge): number 
   return refunded >= c.amount ? btAmount : Math.round((btAmount * refunded) / c.amount);
 }
 
+const ORDER_KEYS = ["order_number", "order_id", "orderNumber", "orderId", "order", "order_no", "reference"];
+
+/**
+ * Order number for a Stripe payment, like the Ziina app's "Order #": taken from the charge metadata
+ * (order_number / order_id / …), else the Stripe invoice number, else "Order #123" in the description.
+ * The user can still type or change it in the app.
+ */
+export function stripeOrderNumber(c: StripeCharge): string | null {
+  const meta = c.metadata ?? {};
+  for (const k of ORDER_KEYS) {
+    const v = meta[k];
+    if (v && String(v).trim()) return String(v).trim().replace(/^#+/, "").slice(0, 40);
+  }
+  const invoice = typeof c.invoice === "object" && c.invoice ? c.invoice : null;
+  if (invoice?.number) return invoice.number.slice(0, 40);
+  const m = (c.description ?? "").match(/\border\s*(?:no\.?|number|#)?\s*#?\s*([A-Za-z0-9-]{3,})/i);
+  return m ? m[1].slice(0, 40) : null;
+}
+
 /** Local Payment fields for a sale balance transaction whose `source` is the expanded charge. */
 export function mapStripeSale(bt: StripeBalanceTransaction, c: StripeCharge) {
   const settlementCurrency = bt.currency.toUpperCase();
@@ -110,6 +129,7 @@ export function mapStripeSale(bt: StripeBalanceTransaction, c: StripeCharge) {
     stripeInvoiceNumber: clean(invoice?.number),
     stripeInvoiceUrl: clean(invoice?.hosted_invoice_url),
     stripeInvoicePdf: clean(invoice?.invoice_pdf),
+    orderNumber: stripeOrderNumber(c),
   };
 }
 
@@ -138,4 +158,4 @@ export const STRIPE_OWNED: (keyof StripeSaleFields)[] = [
   "stripeInvoicePdf",
 ];
 
-export const FILL_IF_EMPTY: (keyof StripeSaleFields)[] = ["customerName", "customerEmail", "customerPhone", "message"];
+export const FILL_IF_EMPTY: (keyof StripeSaleFields)[] = ["customerName", "customerEmail", "customerPhone", "message", "orderNumber"];

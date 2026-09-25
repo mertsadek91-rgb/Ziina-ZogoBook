@@ -41,6 +41,7 @@ interface P {
   liveMode: boolean;
   orderNumber: string;
   partnerAccountId: string;
+  gateway?: string;
 }
 
 export function PaymentActions({ payment }: { payment: P }) {
@@ -208,7 +209,7 @@ export function PaymentActions({ payment }: { payment: P }) {
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <label>{t.order_number_ziina}</label>
+            <label>{payment.gateway === "stripe" ? (lang === "ar" ? "رقم الطلب في Stripe" : "Stripe order number") : t.order_number_ziina}</label>
             <div className="relative">
               <Hash className="pointer-events-none absolute top-1/2 -translate-y-1/2 ms-3 h-3.5 w-3.5 text-slate-400" />
               <input

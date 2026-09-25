@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { chargeStatus, mapStripeSale, refundedInSettlement, type StripeBalanceTransaction, type StripeCharge } from "@/lib/stripe-map";
+import { chargeStatus, mapStripeSale, refundedInSettlement, stripeOrderNumber, type StripeBalanceTransaction, type StripeCharge } from "@/lib/stripe-map";
 import { suggestBooking } from "@/lib/bank-csv";
 import { accountBalance, periodReport, type AccountLite, type SaleLite } from "@/lib/ledger-calc";
 
@@ -68,6 +68,18 @@ describe("mapStripeSale", () => {
     expect(refundedInSettlement(38500, charge({ amount: 10608, amount_refunded: 10608 }))).toBe(38500);
     const f = mapStripeSale(bt(), charge({ livemode: false, invoice: "in_9", billing_details: null, customer: "cus_9", receipt_email: "r@x.com" }));
     expect(f).toMatchObject({ test: true, stripeInvoiceId: "in_9", stripeInvoiceNumber: null, customerEmail: "r@x.com", customerName: null });
+  });
+});
+
+describe("stripeOrderNumber", () => {
+  it("takes the order number from metadata, then the invoice number, then the description", () => {
+    expect(stripeOrderNumber(charge({ metadata: { order_id: "#A-1009" } }))).toBe("A-1009");
+    expect(stripeOrderNumber(charge({ metadata: {} }))).toBe("ABC-0001"); // invoice number
+    expect(stripeOrderNumber(charge({ invoice: null, description: "Order #333140 - consulting" }))).toBe("333140");
+    expect(stripeOrderNumber(charge({ invoice: null, description: "Consulting" }))).toBeNull();
+  });
+  it("is mapped and never overwrites a number typed in the app", async () => {
+    expect(mapStripeSale(bt(), charge({ metadata: { order_number: "777" } })).orderNumber).toBe("777");
   });
 });
 
@@ -187,17 +199,18 @@ describe("syncStripe", () => {
     expect(stripeApi.lastSince).toBeUndefined(); // whole history on first run
     expect(s1).toMatchObject({ fetched: 2, created: 1, updated: 0 });
     expect(db.settings.get("stripe_synced_until_live")).toBe("1790300100");
+    expect([...db.payments.values()][0]).toMatchObject({ orderNumber: "ABC-0001" });
 
     // The user fixes the customer name and assigns a partner in the app.
     const [p] = [...db.payments.values()];
-    db.payments.set(p.id as string, { ...p, customerName: "Sara Khan (edited)", partnerAccountId: "m" });
+    db.payments.set(p.id as string, { ...p, customerName: "Sara Khan (edited)", partnerAccountId: "m", orderNumber: "MY-1" });
 
     const s2 = await syncStripe();
     expect(stripeApi.lastSince).toBe(1790300100 - 2 * 86400); // 2-day overlap
     expect(s2).toMatchObject({ created: 0, updated: 1 });
     expect(db.payments.size).toBe(1);
     const after = [...db.payments.values()][0];
-    expect(after).toMatchObject({ customerName: "Sara Khan (edited)", partnerAccountId: "m", amountFils: 10000 });
+    expect(after).toMatchObject({ customerName: "Sara Khan (edited)", partnerAccountId: "m", orderNumber: "MY-1", amountFils: 10000 });
   });
 
   it("applies refunds from refund balance transactions (full refund → refunded)", async () => {
