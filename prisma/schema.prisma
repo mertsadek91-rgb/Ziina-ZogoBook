@@ -1,0 +1,78 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Payment {
+  id             String    @id @default(cuid())
+  ziinaIntentId  String    @unique @db.VarChar(100)
+  amountFils     Int
+  currency       String    @default("AED") @db.VarChar(10)
+  message        String?   @db.Text
+  status         String    @default("requires_payment_instrument") @db.VarChar(40)
+  redirectUrl    String?   @db.Text
+  operationId    String?   @db.VarChar(100)
+  feeFils        Int       @default(0)
+  tipFils        Int       @default(0)
+  settledFils    Int?
+  paidAt         DateTime?
+  cardBrand      String?   @db.VarChar(40)
+  cardLast4      String?   @db.VarChar(8)
+  lastErrorZiina String?   @db.Text
+
+  customerName  String? @db.VarChar(200)
+  customerEmail String? @db.VarChar(200)
+  customerPhone String? @db.VarChar(40)
+  notes         String? @db.Text
+
+  source String  @default("api") @db.VarChar(20) // api | csv | webhook
+  test   Boolean @default(false)
+
+  // Zoho Books
+  zohoStatus        String    @default("not_synced") @db.VarChar(20) // not_synced | contact_ready | invoiced | paid | error
+  zohoContactId     String?   @db.VarChar(40)
+  zohoItemId        String?   @db.VarChar(40)
+  zohoItemName      String?   @db.VarChar(255)
+  zohoInvoiceId     String?   @db.VarChar(40)
+  zohoInvoiceNumber String?   @db.VarChar(60)
+  zohoPaymentId     String?   @db.VarChar(40)
+  emailSent         Boolean   @default(false)
+  lastError         String?   @db.Text
+  syncedAt          DateTime?
+
+  // Reconciliation with Zoho (see src/lib/reconcile.ts)
+  zohoCheckedAt      DateTime?
+  zohoCandidates     String?   @db.Text // JSON: possible matches found by amount/date/customer
+  zohoCandidateCount Int       @default(0)
+  zohoIgnoredIds     String    @default("") @db.VarChar(2000) // comma-separated Zoho ids the user rejected as matches
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  logs      SyncLog[]
+
+  @@index([status])
+  @@index([zohoStatus])
+  @@index([createdAt])
+}
+
+model SyncLog {
+  id        String   @id @default(cuid())
+  paymentId String
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  step      String   @db.VarChar(40)
+  success   Boolean
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([paymentId])
+}
+
+model Setting {
+  key   String @id @db.VarChar(100)
+  value String @db.Text
+}
