@@ -112,6 +112,32 @@ describe("partnerStatements", () => {
   });
 });
 
+describe("cash box (collection box) between the bank and a partner", () => {
+  // Real case (Oct 2026): bank → box 13,075; box → Nawras 14,700; Mert covered the 1,625 gap.
+  const accs: AccountLite[] = [
+    { id: "w", key: "wio", name: "Wio", kind: "bank", openingFils: 0 },
+    { id: "box", name: "صندوق التجميع", kind: "cash", openingFils: 0 },
+    { id: "m", key: "partner_mert", name: "Mert Sadek", kind: "partner", openingFils: 0 },
+    { id: "n", key: "partner_nawras", name: "Nawras Tutunji", kind: "partner", openingFils: 0 },
+  ];
+  const t = (from: string, to: string, fils: number) => ({ date: d("2026-10-05"), kind: "transfer", amountFils: fils, feeFils: 0, fromAccountId: from, toAccountId: to });
+  const base = [t("w", "box", 1307500), t("box", "n", 1470000)];
+
+  it("shows the gap as a negative box balance and keeps the box out of partner statements", () => {
+    expect(accountBalance(accs[1], base, [])).toBe(-162500);
+    const { partners } = partnerStatements(accs, base, []);
+    expect(partners.map((p) => p.name)).toEqual(["Mert Sadek", "Nawras Tutunji"]);
+    expect(partners.find((p) => p.accountId === "n")).toMatchObject({ received: 1470000 });
+  });
+
+  it("after booking Mert's 1,625 into the box: box back to 0 and the company owes Mert 1,625", () => {
+    const entries = [...base, t("m", "box", 162500)];
+    expect(accountBalance(accs[1], entries, [])).toBe(0);
+    const mert = partnerStatements(accs, entries, []).partners.find((p) => p.accountId === "m")!;
+    expect(mert).toMatchObject({ paidIn: 162500, received: 0, remaining: 162500 });
+  });
+});
+
 describe("validateEntry", () => {
   it("requires the right accounts per kind", () => {
     expect(validateEntry({ kind: "transfer", amountFils: 100, fromAccountId: "a", toAccountId: "a" })).toBe("same_account");

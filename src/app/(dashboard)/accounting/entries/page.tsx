@@ -241,7 +241,7 @@ export default function EntriesPage() {
                 accounts={accounts}
                 value={form.toAccountId}
                 onChange={set("toAccountId")}
-                kinds={k === "income" ? ["bank", "gateway"] : undefined}
+                kinds={k === "income" ? ["bank", "cash", "gateway"] : undefined}
               />
             </div>
           )}

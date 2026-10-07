@@ -9,7 +9,9 @@
 // A partner "fund" balance = what the partner has taken out of the company, net of what they paid in
 // or spent on the company's behalf.
 
-export type AccountKind = "gateway" | "bank" | "partner";
+// cash = a company cash box / holding account (e.g. "صندوق التجميع"): money passes through it,
+// it is NOT a partner and never appears in partner statements.
+export type AccountKind = "gateway" | "bank" | "cash" | "partner";
 export type EntryKind = "transfer" | "expense" | "bank_fee" | "income";
 
 export interface AccountLite {

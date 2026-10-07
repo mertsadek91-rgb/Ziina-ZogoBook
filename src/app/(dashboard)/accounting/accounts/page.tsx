@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Save, Users, Landmark, CreditCard, UserRound, Calendar } from "lucide-react";
+import { Plus, Save, Users, Landmark, CreditCard, UserRound, Calendar, Wallet } from "lucide-react";
 import { Alert, Button, Card, Badge } from "@/components/ui";
 import { useAccounts, type Account } from "@/components/ledger";
 import { api } from "@/components/fetcher";
@@ -14,19 +14,24 @@ const ICONS: Record<string, React.ReactNode> = {
   gateway: <CreditCard className="h-4 w-4 text-purple-600" />,
   bank: <Landmark className="h-4 w-4 text-sky-600" />,
   partner: <UserRound className="h-4 w-4 text-brand" />,
+  cash: <Wallet className="h-4 w-4 text-amber-600" />,
 };
 
-const TONES: Record<string, "blue" | "purple" | "green" | "gray"> = {
+const TONES: Record<string, "blue" | "purple" | "green" | "gray" | "yellow"> = {
   gateway: "purple",
   bank: "blue",
   partner: "green",
+  cash: "yellow",
 };
 
 const ACCENT_BORDERS: Record<string, string> = {
   gateway: "border-s-4 border-s-purple-500",
   bank: "border-s-4 border-s-sky-500",
   partner: "border-s-4 border-s-brand",
+  cash: "border-s-4 border-s-amber-500",
 };
+
+const KINDS = ["bank", "cash", "gateway", "partner"];
 
 export default function AccountsPage() {
   const { a, accountKindLabel } = useAcc();
@@ -100,7 +105,7 @@ export default function AccountsPage() {
           <div className="w-full sm:w-48">
             <label>{a.kind}</label>
             <select value={newAcc.kind} onChange={(e) => setNewAcc({ ...newAcc, kind: e.target.value })}>
-              {["bank", "gateway", "partner"].map((k) => (
+              {KINDS.map((k) => (
                 <option key={k} value={k}>
                   {accountKindLabel(k)}
                 </option>
@@ -128,14 +133,16 @@ function AccountCard({
   onSaved: (t: string) => void;
   onError: (t: string) => void;
 }) {
-  const { a } = useAcc();
+  const { a, accountKindLabel } = useAcc();
   const [name, setName] = useState(acc.name);
+  const [kind, setKind] = useState(acc.kind);
   const [opening, setOpening] = useState(String(fromFils(acc.openingFils)));
   const [openingDate, setOpeningDate] = useState(dubai(acc.openingDate));
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     setName(acc.name);
+    setKind(acc.kind);
     setOpening(String(fromFils(acc.openingFils)));
     setOpeningDate(dubai(acc.openingDate));
   }, [acc]);
@@ -144,7 +151,7 @@ function AccountCard({
     setBusy(true);
     try {
       await api("/api/accounting/accounts", {
-        body: { action: "update", id: acc.id, name, opening: opening || 0, openingDate },
+        body: { action: "update", id: acc.id, name, opening: opening || 0, openingDate, ...(acc.key ? {} : { kind }) },
       });
       onSaved(`${a.saved}: ${name}`);
     } catch (err) {
@@ -174,6 +181,21 @@ function AccountCard({
         <label>{a.name}</label>
         <input value={name} onChange={(e) => setName(e.target.value)} className="py-2 text-xs font-semibold" />
       </div>
+
+      {/* Built-in accounts keep their type; custom ones (e.g. a collection box) can be re-typed. */}
+      {!acc.key && (
+        <div>
+          <label>{a.account_kind}</label>
+          <select value={kind} onChange={(e) => setKind(e.target.value)} className="py-2 text-xs">
+            {KINDS.map((k) => (
+              <option key={k} value={k}>
+                {accountKindLabel(k)}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-[10px] leading-relaxed text-slate-400">{a.account_kind_hint}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div>

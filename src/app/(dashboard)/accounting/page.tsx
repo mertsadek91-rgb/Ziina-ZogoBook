@@ -59,6 +59,7 @@ const ICONS: Record<string, React.ReactNode> = {
   gateway: <CreditCard className="h-4 w-4 text-purple-600" />,
   bank: <Landmark className="h-4 w-4 text-sky-600" />,
   partner: <UserRound className="h-4 w-4 text-brand" />,
+  cash: <Wallet className="h-4 w-4 text-amber-600" />,
 };
 
 const CAT_GRADIENTS: Record<string, string> = {

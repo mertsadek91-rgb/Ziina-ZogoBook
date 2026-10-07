@@ -61,6 +61,9 @@ const AR = {
 
   kind_gateway: "بوابة دفع",
   kind_bank: "بنك",
+  kind_cash: "صندوق نقدي",
+  account_kind: "نوع الحساب",
+  account_kind_hint: "صندوق الشريك = حساب شريك له مستحقات. الصندوق النقدي = حساب للشركة تمر به الأموال (مثل صندوق التجميع).",
   kind_partner: "صندوق شريك",
 
   entry_transfer: "تحويل بين حسابات",
@@ -195,6 +198,9 @@ const EN: Dict = {
 
   kind_gateway: "Payment gateway",
   kind_bank: "Bank",
+  kind_cash: "Cash box",
+  account_kind: "Account type",
+  account_kind_hint: "Partner fund = a partner with dues. Cash box = a company account money passes through (e.g. a collection box).",
   kind_partner: "Partner fund",
 
   entry_transfer: "Transfer between accounts",
