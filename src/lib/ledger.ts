@@ -1,5 +1,5 @@
 import { prisma } from "./db";
-import { accountBalance, partnerStatements, periodReport, type SaleLite } from "./ledger-calc";
+import { accountBalance, accountFlows, moneyReconciliation, partnerStatements, periodReport, type SaleLite } from "./ledger-calc";
 
 /** Accounts every installation starts with. Created on first use; names can be edited later. */
 const DEFAULT_ACCOUNTS = [
@@ -69,5 +69,8 @@ export async function accountingSummary(from?: Date | null, to?: Date | null) {
     statementDate: a.statementDate?.toISOString() ?? null,
   }));
   const statements = partnerStatements(accounts, entries, sales, to);
-  return { report, balances, statements };
+  // Bank and cash-box breakdown (cumulative, like the balances) + who the held money belongs to.
+  const flows = accounts.filter((a) => a.kind === "bank" || a.kind === "cash").map((a) => accountFlows(a, entries, sales, to));
+  const reconciliation = moneyReconciliation(accounts, entries, sales, to);
+  return { report, balances, statements, flows, reconciliation };
 }

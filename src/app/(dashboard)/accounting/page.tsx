@@ -22,7 +22,7 @@ import { Money } from "@/components/ledger";
 import { api } from "@/components/fetcher";
 import { useAcc } from "@/lib/i18n-acc";
 import { formatMoney, aedToUsd } from "@/lib/money";
-import type { PartnerStatement, PeriodReport } from "@/lib/ledger-calc";
+import type { AccountFlows, MoneyReconciliation, PartnerStatement, PeriodReport } from "@/lib/ledger-calc";
 
 interface Summary {
   report: PeriodReport;
@@ -36,6 +36,8 @@ interface Summary {
     statementDate: string | null;
   }[];
   statements: { partners: PartnerStatement[]; unassigned: { count: number; net: number } };
+  flows: AccountFlows[];
+  reconciliation: MoneyReconciliation;
 }
 
 const dubai = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(d);
@@ -362,6 +364,14 @@ export default function AccountingOverview() {
                 );
               })}
             </div>
+
+            {/* Bank / cash boxes: where the money came from and where it went */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {data.flows.map((f) => (
+                <BankBox key={f.accountId} flows={f} data={data} />
+              ))}
+              <ReconciliationBox rec={data.reconciliation} />
+            </div>
           </section>
 
           {/* Balances and Expenses by Category Grid */}
@@ -480,5 +490,128 @@ function Row({ label, fils, strong }: { label: string; fils: number; strong?: bo
         <Money fils={fils} strong={strong} />
       </dd>
     </div>
+  );
+}
+
+function BankBox({ flows: f, data }: { flows: AccountFlows; data: Summary }) {
+  const { a, accountKindLabel } = useAcc();
+  const acc = data.balances.find((b) => b.id === f.accountId);
+  const name = (id?: string) => data.balances.find((b) => b.id === id)?.name ?? "—";
+  const label = (l: AccountFlows["lines"][number]) =>
+    l.kind === "transfer"
+      ? `${l.direction === "in" ? a.box_from : a.box_to} ${name(l.counterpartId)}`
+      : l.kind === "income"
+        ? a.box_income
+        : l.kind === "expense"
+          ? a.box_expenses
+          : l.kind === "bank_fee"
+            ? a.box_bank_fees
+            : a.box_transfer_fees;
+  const ins = f.lines.filter((l) => l.direction === "in");
+  const outs = f.lines.filter((l) => l.direction === "out");
+  const stmt = acc?.statementBalanceFils ?? null;
+  const diff = stmt != null ? f.balance - stmt : null;
+  return (
+    <Card className="space-y-3">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600">
+            {acc?.kind === "cash" ? <Wallet className="h-4 w-4" /> : <Landmark className="h-4 w-4" />}
+          </div>
+          <div>
+            <div className="text-base font-extrabold text-slate-900">
+              {a.box_of} {acc?.name}
+            </div>
+            <div className="text-[11px] text-slate-400">{accountKindLabel(acc?.kind ?? "bank")}</div>
+          </div>
+        </div>
+        <div className="text-end">
+          <div className="text-[11px] font-semibold text-slate-400">{a.box_balance}</div>
+          <div className="text-lg font-extrabold">
+            <Money fils={f.balance} strong />
+          </div>
+        </div>
+      </div>
+      <dl className="space-y-1.5 text-xs">
+        {f.opening !== 0 && <Row label={a.box_opening} fils={f.opening} />}
+        {ins.length > 0 && <div className="pt-1 text-[11px] font-bold text-emerald-700">{a.box_in}</div>}
+        {ins.map((l, i) => (
+          <Row key={"i" + i} label={label(l)} fils={l.amount} />
+        ))}
+        {outs.length > 0 && <div className="pt-1 text-[11px] font-bold text-rose-600">{a.box_out}</div>}
+        {outs.map((l, i) => (
+          <Row key={"o" + i} label={label(l)} fils={-l.amount} />
+        ))}
+        <div className="flex items-center justify-between border-t border-dashed border-slate-200 pt-2 text-sm">
+          <dt className="font-bold text-slate-900">{a.box_balance}</dt>
+          <dd>
+            <Money fils={f.balance} strong />
+          </dd>
+        </div>
+        {stmt != null && (
+          <div className="flex items-center justify-between text-xs">
+            <dt className="text-slate-500">{a.statement_balance}</dt>
+            <dd className="flex items-center gap-2">
+              <Money fils={stmt} />
+              {diff === 0 ? (
+                <Badge tone="green" dot>
+                  {a.matches_statement}
+                </Badge>
+              ) : (
+                <Badge tone="red">
+                  {a.difference}: {formatMoney(diff ?? 0)}
+                </Badge>
+              )}
+            </dd>
+          </div>
+        )}
+      </dl>
+    </Card>
+  );
+}
+
+function ReconciliationBox({ rec }: { rec: MoneyReconciliation }) {
+  const { a, accountKindLabel } = useAcc();
+  const explained = rec.openingTotal + rec.unassignedNet;
+  const other = rec.difference - explained;
+  return (
+    <Card className="space-y-3">
+      <div className="border-b border-slate-100 pb-3">
+        <div className="text-base font-extrabold text-slate-900">{a.recon_title}</div>
+        <div className="text-[11px] text-slate-400">{a.recon_hint}</div>
+      </div>
+      <dl className="space-y-1.5 text-xs">
+        <div className="text-[11px] font-bold text-slate-500">{a.recon_held}</div>
+        {rec.held.map((h) => (
+          <Row key={h.accountId} label={`${h.name} (${accountKindLabel(h.kind)})`} fils={h.balance} />
+        ))}
+        <Row label={a.recon_total} fils={rec.heldTotal} strong />
+        <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+          <dt className="font-bold text-slate-800">{a.recon_owed}</dt>
+          <dd>
+            <Money fils={rec.owedToPartners} strong />
+          </dd>
+        </div>
+        <div className="border-t border-dashed border-slate-200 pt-2">
+          {rec.difference === 0 ? (
+            <Badge tone="green" dot>
+              {a.recon_ok}
+            </Badge>
+          ) : (
+            <div className="space-y-1">
+              <Row label={a.recon_diff} fils={rec.difference} strong />
+              {rec.unassignedNet !== 0 && <Row label={`• ${a.recon_explain_unassigned}`} fils={rec.unassignedNet} />}
+              {rec.openingTotal !== 0 && <Row label={`• ${a.recon_explain_opening}`} fils={rec.openingTotal} />}
+              {other !== 0 && (
+                <div className="flex justify-between font-semibold text-rose-600">
+                  <dt>• {a.recon_explain_other}</dt>
+                  <dd className="num">{formatMoney(other)}</dd>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </dl>
+    </Card>
   );
 }

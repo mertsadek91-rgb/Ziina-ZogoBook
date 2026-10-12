@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accountBalance, allocate, partnerStatements, periodReport, validateEntry, type AccountLite, type EntryLite, type SaleLite } from "@/lib/ledger-calc";
+import { accountBalance, accountFlows, allocate, moneyReconciliation, partnerStatements, periodReport, validateEntry, type AccountLite, type EntryLite, type SaleLite } from "@/lib/ledger-calc";
 import { guessColumns, lineText, parseAmount, parseBankDate, parseStatement, suggestBooking } from "@/lib/bank-csv";
 
 const d = (s: string) => new Date(`${s}T12:00:00+04:00`);
@@ -109,6 +109,39 @@ describe("partnerStatements", () => {
     expect(allocate(100, [0, 0])).toEqual([50, 50]);
     expect(allocate(-358, [1, 1])).toEqual([-179, -179]);
     expect(allocate(0, [5, 7])).toEqual([0, 0]);
+  });
+});
+
+describe("bank box & partner money reconciliation", () => {
+  const sept = new Date("2026-09-30T23:59:59+04:00");
+
+  it("explains the bank balance line by line (grouped by the other account)", () => {
+    const f = accountFlows(ACC[1], ENTRIES, SALES, sept);
+    expect(f.lines).toEqual([
+      { direction: "in", kind: "transfer", counterpartId: "z", amount: 140000 },
+      { direction: "in", kind: "income", amount: 5000 },
+      { direction: "out", kind: "transfer", counterpartId: "m", amount: 120000 },
+      { direction: "out", kind: "transfer", counterpartId: "n", amount: 40000 },
+      { direction: "out", kind: "expense", amount: 10000 },
+      { direction: "out", kind: "bank_fee", amount: 1500 },
+      { direction: "out", kind: "transfer_fee", amount: 500 },
+    ]);
+    expect(f.balance).toBe(accountBalance(ACC[1], ENTRIES, SALES, sept));
+  });
+
+  it("money held − owed to partners = unassigned payments + opening balances", () => {
+    const r = moneyReconciliation(ACC, ENTRIES, SALES, sept);
+    expect(r.heldTotal).toBe(21500 - 27000); // Ziina + Wio
+    expect(r.owedToPartners).toBe(-31667 + 7167);
+    expect(r.difference).toBe(19000); // the unassigned payment
+    expect(r.difference).toBe(r.unassignedNet + r.openingTotal);
+
+    // With everything assigned and an opening balance, the identity still holds.
+    const assigned = SALES.map((s) => ({ ...s, partnerAccountId: s.partnerAccountId ?? "n" }));
+    const withOpening = ACC.map((a) => (a.id === "w" ? { ...a, openingFils: 50000 } : a));
+    const r2 = moneyReconciliation(withOpening, ENTRIES, assigned, null);
+    expect(r2.unassignedNet).toBe(0);
+    expect(r2.difference).toBe(50000);
   });
 });
 

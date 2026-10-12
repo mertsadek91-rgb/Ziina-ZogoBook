@@ -292,3 +292,91 @@ export function partnerStatements(
     sharedCosts,
   };
 }
+
+// ---------- Bank box & partner money reconciliation ----------
+
+export interface FlowLine {
+  direction: "in" | "out";
+  kind: "transfer" | "income" | "expense" | "bank_fee" | "transfer_fee" | "sales";
+  counterpartId?: string; // other account of a transfer
+  amount: number; // always positive
+}
+
+export interface AccountFlows {
+  accountId: string;
+  opening: number;
+  lines: FlowLine[]; // grouped: one line per (direction, kind, counterpart)
+  totalIn: number;
+  totalOut: number;
+  balance: number; // opening + in − out (= accountBalance)
+}
+
+/**
+ * Where an account's money came from and where it went, up to `to` (same rules as accountBalance:
+ * movements before the opening date are part of the opening balance). Transfers are grouped by the
+ * other account, so a bank box reads "from Ziina +X, from Stripe +Y, to Mert −Z, …".
+ */
+export function accountFlows(account: AccountLite, entries: EntryLite[], sales: SaleLite[], to?: Date | null): AccountFlows {
+  const from = account.openingDate ?? null;
+  const map = new Map<string, FlowLine>();
+  const add = (line: Omit<FlowLine, "amount">, amount: number) => {
+    if (!amount) return;
+    const k = `${line.direction}|${line.kind}|${line.counterpartId ?? ""}`;
+    const cur = map.get(k);
+    if (cur) cur.amount += amount;
+    else map.set(k, { ...line, amount });
+  };
+  for (const e of entries) {
+    if (!inRange(e.date, from, to)) continue;
+    if (e.toAccountId === account.id && e.kind === "transfer") add({ direction: "in", kind: "transfer", counterpartId: e.fromAccountId ?? undefined }, e.amountFils);
+    if (e.toAccountId === account.id && e.kind === "income") add({ direction: "in", kind: "income" }, e.amountFils);
+    if (e.fromAccountId === account.id) {
+      if (e.kind === "transfer") {
+        add({ direction: "out", kind: "transfer", counterpartId: e.toAccountId ?? undefined }, e.amountFils);
+        add({ direction: "out", kind: "transfer_fee" }, e.feeFils);
+      }
+      if (e.kind === "expense") add({ direction: "out", kind: "expense" }, e.amountFils);
+      if (e.kind === "bank_fee") add({ direction: "out", kind: "bank_fee" }, e.amountFils);
+    }
+  }
+  if (account.kind === "gateway" && account.key) {
+    const net = sales
+      .filter((s) => (s.gateway ?? "ziina") === account.key && inRange(s.date, from, to))
+      .reduce((a, s) => a + s.grossFils - s.feeFils, 0);
+    add({ direction: "in", kind: "sales" }, net);
+  }
+  const lines = [...map.values()].sort((a, b) => (a.direction === b.direction ? b.amount - a.amount : a.direction === "in" ? -1 : 1));
+  const totalIn = lines.filter((l) => l.direction === "in").reduce((a, l) => a + l.amount, 0);
+  const totalOut = lines.filter((l) => l.direction === "out").reduce((a, l) => a + l.amount, 0);
+  return { accountId: account.id, opening: account.openingFils, lines, totalIn, totalOut, balance: account.openingFils + totalIn - totalOut };
+}
+
+export interface MoneyReconciliation {
+  owedToPartners: number; // Σ partner "remaining"
+  held: { accountId: string; name: string; kind: string; balance: number }[]; // banks, cash boxes, gateways
+  heldTotal: number;
+  difference: number; // heldTotal − owedToPartners
+  openingTotal: number; // explains part of the difference
+  unassignedNet: number; // payments without a partner (explains the rest)
+}
+
+/**
+ * Every dirham the company holds (banks, cash boxes, gateway balances) should be owed to a partner.
+ * heldTotal − owedToPartners = opening balances + net of payments not yet assigned to a partner.
+ */
+export function moneyReconciliation(accounts: AccountLite[], entries: EntryLite[], sales: SaleLite[], to?: Date | null): MoneyReconciliation {
+  const st = partnerStatements(accounts, entries, sales, to);
+  const owedToPartners = st.partners.reduce((a, p) => a + p.remaining, 0);
+  const held = accounts
+    .filter((a) => a.kind !== "partner")
+    .map((a) => ({ accountId: a.id, name: a.name, kind: a.kind, balance: accountBalance(a, entries, sales, to ?? undefined) }));
+  const heldTotal = held.reduce((a, h) => a + h.balance, 0);
+  return {
+    owedToPartners,
+    held,
+    heldTotal,
+    difference: heldTotal - owedToPartners,
+    openingTotal: accounts.filter((a) => a.kind !== "partner").reduce((a, x) => a + x.openingFils, 0),
+    unassignedNet: st.unassigned.net,
+  };
+}
