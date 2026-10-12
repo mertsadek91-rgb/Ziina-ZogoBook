@@ -10,6 +10,8 @@ const AR = {
   tab_entries: "القيود والعمليات",
   tab_import: "استيراد كشف البنك",
   tab_accounts: "الحسابات",
+  tab_statements: "كشوفات الحساب",
+  view_statement: "كشف حساب",
 
   period: "الفترة",
   this_month: "هذا الشهر",
@@ -168,6 +170,8 @@ const EN: Dict = {
   tab_entries: "Entries",
   tab_import: "Import bank statement",
   tab_accounts: "Accounts",
+  tab_statements: "Statements",
+  view_statement: "Statement",
 
   period: "Period",
   this_month: "This month",

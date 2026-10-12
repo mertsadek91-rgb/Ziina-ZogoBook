@@ -31,6 +31,10 @@ export interface EntryLite {
   fromAccountId?: string | null;
   toAccountId?: string | null;
   category?: string | null;
+  // optional details, used for account statements
+  id?: string;
+  description?: string | null;
+  reference?: string | null;
 }
 
 export interface SaleLite {
@@ -39,6 +43,10 @@ export interface SaleLite {
   feeFils: number; // Ziina fee, AED
   partnerAccountId?: string | null; // partner entitled to this payment
   gateway?: string; // "ziina" (default) | "stripe" — the gateway account keyed the same receives it
+  // optional details, used for account statements
+  paymentId?: string;
+  orderNumber?: string | null;
+  customerName?: string | null;
 }
 
 export const EXPENSE_CATEGORIES = [
@@ -379,4 +387,144 @@ export function moneyReconciliation(accounts: AccountLite[], entries: EntryLite[
     openingTotal: accounts.filter((a) => a.kind !== "partner").reduce((a, x) => a + x.openingFils, 0),
     unassignedNet: st.unassigned.net,
   };
+}
+
+// ---------- Account statements (كشف حساب) ----------
+
+export type StatementLineType =
+  | "sale" // gateway: net of a payment received / partner: net of a payment assigned to them
+  | "transfer_in"
+  | "transfer_out"
+  | "transfer_fee"
+  | "income"
+  | "expense"
+  | "expense_paid" // partner paid a company expense personally (owed back to them)
+  | "bank_fee"
+  | "cost_share"; // partner's share of a shared cost (or of other income, as a credit)
+
+export interface StatementLine {
+  date: Date;
+  type: StatementLineType;
+  in: number; // money in / amount owed to the partner increases
+  out: number; // money out / amount owed to the partner decreases
+  counterpartId?: string;
+  description?: string | null;
+  reference?: string | null;
+  category?: string | null;
+  // sales
+  paymentId?: string;
+  orderNumber?: string | null;
+  customerName?: string | null;
+  gateway?: string;
+  gross?: number;
+  fee?: number;
+  balance?: number; // running balance after this line (set for rows in the period)
+}
+
+export interface AccountStatement {
+  accountId: string;
+  opening: number; // balance at the start of the period
+  rows: StatementLine[];
+  totalIn: number;
+  totalOut: number;
+  closing: number;
+}
+
+/**
+ * Full account statement with a running balance. For banks, cash boxes and gateways the balance is
+ * the money in the account; for partners it is what the company owes them ("remaining") — the
+ * closing balance equals the partner card / account balance at the same date.
+ */
+export function accountStatement(
+  account: AccountLite,
+  accounts: AccountLite[],
+  entries: EntryLite[],
+  sales: SaleLite[],
+  from?: Date | null,
+  to?: Date | null,
+): AccountStatement {
+  const lines: StatementLine[] = [];
+  const meta = (e: EntryLite) => ({ description: e.description, reference: e.reference, category: e.category });
+  const saleLine = (s: SaleLite): StatementLine => ({
+    date: s.date,
+    type: "sale",
+    in: s.grossFils - s.feeFils,
+    out: 0,
+    paymentId: s.paymentId,
+    orderNumber: s.orderNumber,
+    customerName: s.customerName,
+    gateway: s.gateway ?? "ziina",
+    gross: s.grossFils,
+    fee: s.feeFils,
+  });
+
+  if (account.kind === "partner") {
+    const es = entries.filter((e) => inRange(e.date, null, to));
+    for (const s of sales) if (s.partnerAccountId === account.id && inRange(s.date, null, to)) lines.push(saleLine(s));
+    for (const e of es) {
+      if (e.kind === "transfer" && e.fromAccountId === account.id)
+        lines.push({ date: e.date, type: "transfer_out", in: e.amountFils, out: 0, counterpartId: e.toAccountId ?? undefined, ...meta(e) });
+      if (e.kind === "transfer" && e.toAccountId === account.id)
+        lines.push({ date: e.date, type: "transfer_in", in: 0, out: e.amountFils, counterpartId: e.fromAccountId ?? undefined, ...meta(e) });
+      if (e.kind === "expense" && e.fromAccountId === account.id)
+        lines.push({ date: e.date, type: "expense_paid", in: e.amountFils, out: 0, ...meta(e) });
+    }
+    // Share of each shared cost, with the same weights as the partner card; the last line absorbs
+    // rounding so the total equals the card's cost share exactly.
+    const st = partnerStatements(accounts, entries, sales, to);
+    const partners = st.partners;
+    const me = partners.findIndex((p) => p.accountId === account.id);
+    const weights = partners.map((p) => p.entitledFromPayments);
+    const costs: { e: EntryLite; amount: number }[] = [];
+    for (const e of es) {
+      if (e.kind === "bank_fee" || e.kind === "expense") costs.push({ e, amount: e.amountFils });
+      if (e.kind === "transfer" && e.feeFils) costs.push({ e, amount: e.feeFils });
+      if (e.kind === "income") costs.push({ e, amount: -e.amountFils });
+    }
+    if (me >= 0 && costs.length) {
+      const shares = costs.map((c) => allocate(c.amount, weights)[me]);
+      const target = partners[me].costShare;
+      shares[shares.length - 1] += target - shares.reduce((a, b) => a + b, 0);
+      costs.forEach((c, i) => {
+        const v = shares[i];
+        if (!v) return;
+        lines.push({ date: c.e.date, type: "cost_share", in: v < 0 ? -v : 0, out: v > 0 ? v : 0, ...meta(c.e), category: c.e.kind === "expense" ? c.e.category : c.e.kind });
+      });
+    }
+  } else {
+    const start = account.openingDate ?? null;
+    for (const e of entries) {
+      if (!inRange(e.date, start, to)) continue;
+      if (e.toAccountId === account.id && e.kind === "transfer")
+        lines.push({ date: e.date, type: "transfer_in", in: e.amountFils, out: 0, counterpartId: e.fromAccountId ?? undefined, ...meta(e) });
+      if (e.toAccountId === account.id && e.kind === "income") lines.push({ date: e.date, type: "income", in: e.amountFils, out: 0, ...meta(e) });
+      if (e.fromAccountId === account.id) {
+        if (e.kind === "transfer") {
+          lines.push({ date: e.date, type: "transfer_out", in: 0, out: e.amountFils, counterpartId: e.toAccountId ?? undefined, ...meta(e) });
+          if (e.feeFils) lines.push({ date: e.date, type: "transfer_fee", in: 0, out: e.feeFils, ...meta(e) });
+        }
+        if (e.kind === "expense") lines.push({ date: e.date, type: "expense", in: 0, out: e.amountFils, ...meta(e) });
+        if (e.kind === "bank_fee") lines.push({ date: e.date, type: "bank_fee", in: 0, out: e.amountFils, ...meta(e) });
+      }
+    }
+    if (account.kind === "gateway" && account.key) {
+      for (const s of sales) if ((s.gateway ?? "ziina") === account.key && inRange(s.date, start, to)) lines.push(saleLine(s));
+    }
+  }
+
+  lines.sort((a, b) => a.date.getTime() - b.date.getTime());
+  let opening = account.kind === "partner" ? 0 : account.openingFils;
+  const rows: StatementLine[] = [];
+  for (const l of lines) {
+    if (from && l.date < from) opening += l.in - l.out;
+    else rows.push(l);
+  }
+  let bal = opening;
+  for (const r of rows) {
+    bal += r.in - r.out;
+    r.balance = bal;
+  }
+  const totalIn = rows.reduce((a, r) => a + r.in, 0);
+  const totalOut = rows.reduce((a, r) => a + r.out, 0);
+  return { accountId: account.id, opening, rows, totalIn, totalOut, closing: opening + totalIn - totalOut };
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PieChart, BookOpen, UploadCloud, Users, Calculator } from "lucide-react";
+import { PieChart, BookOpen, UploadCloud, Users, Calculator, FileText } from "lucide-react";
 import { useAcc } from "@/lib/i18n-acc";
 
 export default function AccountingLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +13,7 @@ export default function AccountingLayout({ children }: { children: React.ReactNo
     { href: "/accounting", label: a.tab_overview, icon: PieChart },
     { href: "/accounting/entries", label: a.tab_entries, icon: BookOpen },
     { href: "/accounting/import", label: a.tab_import, icon: UploadCloud },
+    { href: "/accounting/statements", label: a.tab_statements, icon: FileText },
     { href: "/accounting/accounts", label: a.tab_accounts, icon: Users },
   ];
 
@@ -30,7 +31,7 @@ export default function AccountingLayout({ children }: { children: React.ReactNo
       </div>
 
       {/* Sub-Navigation Tabs */}
-      <nav className="flex gap-1.5 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-xs">
+      <nav className="no-print flex gap-1.5 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-xs">
         {tabs.map((t) => {
           const active = path === t.href;
           const Icon = t.icon;

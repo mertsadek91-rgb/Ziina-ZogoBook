@@ -1,5 +1,13 @@
 import { prisma } from "./db";
-import { accountBalance, accountFlows, moneyReconciliation, partnerStatements, periodReport, type SaleLite } from "./ledger-calc";
+import {
+  accountBalance,
+  accountFlows,
+  accountStatement,
+  moneyReconciliation,
+  partnerStatements,
+  periodReport,
+  type SaleLite,
+} from "./ledger-calc";
 
 /** Accounts every installation starts with. Created on first use; names can be edited later. */
 const DEFAULT_ACCOUNTS = [
@@ -38,6 +46,9 @@ async function loadSales(): Promise<SaleLite[]> {
       amountRefundedFils: true,
       partnerAccountId: true,
       gateway: true,
+      id: true,
+      orderNumber: true,
+      customerName: true,
     },
   });
   return rows.map((r) => ({
@@ -46,6 +57,9 @@ async function loadSales(): Promise<SaleLite[]> {
     feeFils: r.feeFils,
     partnerAccountId: r.partnerAccountId,
     gateway: r.gateway,
+    paymentId: r.id,
+    orderNumber: r.orderNumber,
+    customerName: r.customerName,
   }));
 }
 
@@ -70,7 +84,37 @@ export async function accountingSummary(from?: Date | null, to?: Date | null) {
   }));
   const statements = partnerStatements(accounts, entries, sales, to);
   // Bank and cash-box breakdown (cumulative, like the balances) + who the held money belongs to.
-  const flows = accounts.filter((a) => a.kind === "bank" || a.kind === "cash").map((a) => accountFlows(a, entries, sales, to));
+  // Boxes: banks, cash boxes, and any account added by hand (e.g. a collection box still typed as partner).
+  const flows = accounts
+    .filter((a) => a.kind === "bank" || a.kind === "cash" || (!a.key && a.kind !== "gateway"))
+    .map((a) => accountFlows(a, entries, sales, to));
   const reconciliation = moneyReconciliation(accounts, entries, sales, to);
   return { report, balances, statements, flows, reconciliation };
+}
+
+const ENTRY_FIELDS = {
+  id: true,
+  date: true,
+  kind: true,
+  amountFils: true,
+  feeFils: true,
+  fromAccountId: true,
+  toAccountId: true,
+  category: true,
+  description: true,
+  reference: true,
+} as const;
+
+/** Account statement (كشف حساب) for one account over a period, with running balance. */
+export async function accountingStatement(accountId: string, from?: Date | null, to?: Date | null) {
+  const accounts = await listAccounts();
+  const account = accounts.find((a) => a.id === accountId);
+  if (!account) throw new Error("الحساب غير موجود");
+  const [entries, sales] = await Promise.all([prisma.ledgerEntry.findMany({ select: ENTRY_FIELDS }), loadSales()]);
+  const st = accountStatement(account, accounts, entries, sales, from, to);
+  return {
+    account: { id: account.id, name: account.name, kind: account.kind, key: account.key },
+    accounts: accounts.map((a) => ({ id: a.id, name: a.name, kind: a.kind })),
+    ...st,
+  };
 }

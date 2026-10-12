@@ -118,3 +118,31 @@ th.num {
   background-image: radial-gradient(at 0% 0%, rgba(91, 61, 245, 0.04) 0px, transparent 50%),
                     radial-gradient(at 100% 100%, rgba(121, 94, 247, 0.03) 0px, transparent 50%);
 }
+
+/* Printing an account statement: hide the app chrome and the controls, keep the statement. */
+@media print {
+  aside,
+  header,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .print-area {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  .print-area table {
+    min-width: 0 !important;
+  }
+  .print-area tr {
+    break-inside: avoid;
+  }
+}

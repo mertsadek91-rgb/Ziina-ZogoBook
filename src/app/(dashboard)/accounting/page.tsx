@@ -360,6 +360,12 @@ export default function AccountingOverview() {
                         </dd>
                       </div>
                     </dl>
+                    <Link
+                      href={`/accounting/statements?account=${p.accountId}`}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline"
+                    >
+                      {a.view_statement} ←
+                    </Link>
                   </Card>
                 );
               })}
@@ -566,6 +572,9 @@ function BankBox({ flows: f, data }: { flows: AccountFlows; data: Summary }) {
           </div>
         )}
       </dl>
+      <Link href={`/accounting/statements?account=${f.accountId}`} className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline">
+        {a.view_statement} ←
+      </Link>
     </Card>
   );
 }

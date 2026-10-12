@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accountBalance, accountFlows, allocate, moneyReconciliation, partnerStatements, periodReport, validateEntry, type AccountLite, type EntryLite, type SaleLite } from "@/lib/ledger-calc";
+import { accountBalance, accountFlows, accountStatement, allocate, moneyReconciliation, partnerStatements, periodReport, validateEntry, type AccountLite, type EntryLite, type SaleLite } from "@/lib/ledger-calc";
 import { guessColumns, lineText, parseAmount, parseBankDate, parseStatement, suggestBooking } from "@/lib/bank-csv";
 
 const d = (s: string) => new Date(`${s}T12:00:00+04:00`);
@@ -142,6 +142,46 @@ describe("bank box & partner money reconciliation", () => {
     const r2 = moneyReconciliation(withOpening, ENTRIES, assigned, null);
     expect(r2.unassignedNet).toBe(0);
     expect(r2.difference).toBe(50000);
+  });
+});
+
+describe("account statements (كشف حساب)", () => {
+  const end = new Date("2026-10-31T23:59:59+04:00");
+
+  it("bank: opening + lines = closing = account balance, split at the period start", () => {
+    const all = accountStatement(ACC[1], ACC, ENTRIES, SALES, null, end);
+    expect(all.opening).toBe(0);
+    expect(all.closing).toBe(accountBalance(ACC[1], ENTRIES, SALES, end));
+    expect(all.rows.at(-1)!.balance).toBe(all.closing);
+    expect(all.rows.map((r) => r.type)).toEqual(["transfer_in", "transfer_out", "transfer_fee", "transfer_out", "expense", "bank_fee", "income"]);
+
+    // From 18 Sep: the first three movements fold into the opening balance.
+    const part = accountStatement(ACC[1], ACC, ENTRIES, SALES, new Date("2026-09-18T00:00:00+04:00"), end);
+    expect(part.opening).toBe(140000 - 120000 - 500 - 40000);
+    expect(part.closing).toBe(all.closing);
+    expect(part.rows.map((r) => r.type)).toEqual(["expense", "bank_fee", "income"]);
+  });
+
+  it("gateway: one line per sale (net), with gross and fee", () => {
+    const st = accountStatement(ACC[0], ACC, ENTRIES, SALES, null, end);
+    expect(st.rows.filter((r) => r.type === "sale").map((r) => [r.in, r.gross, r.fee])).toEqual([
+      [95000, 100000, 5000],
+      [47500, 50000, 2500],
+      [19000, 20000, 1000],
+      [28500, 30000, 1500],
+    ]);
+    expect(st.closing).toBe(accountBalance(ACC[0], ENTRIES, SALES, end));
+  });
+
+  it("partner: closing = card remaining; cost-share lines add up to the card's cost share", () => {
+    for (const id of ["m", "n"]) {
+      const acc = ACC.find((a) => a.id === id)!;
+      const st = accountStatement(acc, ACC, ENTRIES, SALES, null, end);
+      const card = partnerStatements(ACC, ENTRIES, SALES, end).partners.find((p) => p.accountId === id)!;
+      expect(st.closing).toBe(card.remaining);
+      const share = st.rows.filter((r) => r.type === "cost_share").reduce((a, r) => a + r.out - r.in, 0);
+      expect(share).toBe(card.costShare);
+    }
   });
 });
 
