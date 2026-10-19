@@ -1,6 +1,6 @@
 import type { Payment } from "@prisma/client";
 import { prisma, getSetting } from "./db";
-import { getPaymentIntent, intentToPaymentFields } from "./ziina";
+import { ZiinaError, getPaymentIntent, intentToPaymentFields } from "./ziina";
 import * as zoho from "./zoho";
 import { matchContact } from "./contacts";
 import { fromFils } from "./money";
@@ -91,7 +91,18 @@ export async function syncToZoho(paymentId: string, opts: SyncOptions): Promise<
 
     // 1. Payment must really be completed in Ziina.
     step = "ziina_check";
-    p = await refreshFromZiina(p);
+    try {
+      p = await refreshFromZiina(p);
+    } catch (e) {
+      // Intents created by another Ziina app (e.g. the online store's plugin) can't be read with this
+      // token → 401/403. A payment already recorded as completed (signed webhook / CSV) is trusted as is.
+      const denied = e instanceof ZiinaError && (e.status === 401 || e.status === 403);
+      if (!denied) throw e;
+      if (p.status !== "completed") {
+        throw new Error("Ziina رفض قراءة هذه الدفعة (Unauthorized) — تحقق من مفتاح Ziina في الإعدادات أو استوردها من ملف CSV");
+      }
+      await log(p.id, "ziina_check", true, "تعذّر التحقق من Ziina (Unauthorized) — اعتُمدت بيانات الدفعة المسجلة");
+    }
     if (p.status !== "completed") throw new Error(`الدفعة غير مكتملة في Ziina (الحالة: ${p.status})`);
     if (p.currency !== "AED") throw new Error(`لم تتم تسوية الدفعة بالدرهم بعد (العملة: ${p.currency}) — حدّث من Ziina وأعد المحاولة`);
 
