@@ -63,7 +63,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
   if (!res.ok) {
     const apiMsg = data && typeof data === "object" && "message" in data ? String(data.message) : "";
-    const msg = apiMsg || `Ziina ${method} ${path} failed with ${res.status}`;
+    const msg =
+      res.status === 401
+        ? "مفتاح Ziina غير صالح أو منتهي (Unauthorized) — أنشئ مفتاحًا جديدًا من لوحة Ziina وضعه في ZIINA_API_TOKEN"
+        : apiMsg || `Ziina ${method} ${path} failed with ${res.status}`;
     throw new ZiinaError(msg, res.status, data);
   }
   return data as T;
