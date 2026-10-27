@@ -3,6 +3,7 @@ import { TABS, tabOf, whereForTab, type Tab } from "@/lib/status";
 import { PaymentsView } from "./PaymentsView";
 import { listAccounts } from "@/lib/ledger";
 import { stripeConfigured } from "@/lib/stripe";
+import { wooConfigured } from "@/lib/woo";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,7 @@ export default async function PaymentsPage({
       visibleTestCount={visibleTestCount}
       partners={partners}
       stripeEnabled={stripeConfigured()}
+      wooEnabled={wooConfigured()}
       payments={serializedPayments}
     />
   );

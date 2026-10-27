@@ -113,7 +113,11 @@ export function PaymentDetailClient({ payment }: { payment: PaymentData }) {
       ? t.source_csv
       : payment.source === "webhook"
         ? t.source_webhook
-        : t.source_app;
+        : payment.source === "woo"
+          ? lang === "ar"
+            ? "مزامنة من طلبات الموقع"
+            : "Synced from website orders"
+          : t.source_app;
 
   const rows: [string, React.ReactNode, string?][] = [
     [t.amount, <span key="1" className="num font-bold text-slate-900">{formatMoney(payment.amountFils, payment.currency)}</span>],

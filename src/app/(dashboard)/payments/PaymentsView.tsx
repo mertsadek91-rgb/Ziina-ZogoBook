@@ -23,6 +23,7 @@ import { PaymentsTable, type Row } from "./PaymentsTable";
 import { ReconcileButton } from "./ReconcileButton";
 import { StripeSyncButton } from "./StripeSyncButton";
 import { HideTestButton } from "./HideTestButton";
+import { WooSyncButton } from "./WooSyncButton";
 
 interface PaymentsViewProps {
   initialTab: Tab;
@@ -34,6 +35,7 @@ interface PaymentsViewProps {
   payments: Row[];
   partners: { id: string; name: string }[];
   stripeEnabled?: boolean;
+  wooEnabled?: boolean;
 }
 
 export function PaymentsView({
@@ -44,6 +46,7 @@ export function PaymentsView({
   counts,
   visibleTestCount,
   stripeEnabled,
+  wooEnabled,
   payments,
   partners,
 }: PaymentsViewProps) {
@@ -141,6 +144,7 @@ export function PaymentsView({
 
         <div className="flex flex-wrap items-center gap-2.5">
           {visibleTestCount > 0 && <HideTestButton count={visibleTestCount} />}
+          {wooEnabled && <WooSyncButton />}
           {stripeEnabled && <StripeSyncButton />}
           <ReconcileButton />
           <Link href="/quick-link">
