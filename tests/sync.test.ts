@@ -113,6 +113,7 @@ function seed(extra: Row = {}) {
     amountFils: 10000,
     currency: "AED",
     tipFils: 0,
+    amountRefundedFils: 0,
     feeFils: 300,
     status: "completed",
     source: "api",
@@ -277,5 +278,19 @@ describe("reconcile", () => {
     expect(p.zohoInvoiceId).toBeNull();
     expect(p.zohoStatus).toBe("contact_ready");
     expect(String(p.lastError)).toMatch(/حذف/);
+  });
+});
+
+describe("syncToZoho with a partial refund", () => {
+  it("invoices only the amount kept after the refund", async () => {
+    seed({ amountRefundedFils: 7000 });
+    const r = await syncToZoho("p1", { itemId: "item_1" });
+    expect(r.ok).toBe(true);
+    expect(zohoState.calls).toContain("createInvoice:30");
+  });
+  it("refuses a fully refunded payment", async () => {
+    seed({ amountRefundedFils: 10000 });
+    const r = await syncToZoho("p1", { itemId: "item_1" });
+    expect(r.ok).toBe(false);
   });
 });

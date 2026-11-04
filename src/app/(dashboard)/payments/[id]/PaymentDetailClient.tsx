@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Badge, Card, ziinaTone, zohoTone } from "@/components/ui";
 import { formatMoney } from "@/lib/money";
+import { RefundEditor } from "./RefundEditor";
 import { useI18n } from "@/lib/i18n";
 import { PaymentActions } from "./PaymentActions";
 import { MatchPanel } from "./MatchPanel";
@@ -272,6 +273,19 @@ export function PaymentDetailClient({ payment }: { payment: PaymentData }) {
                 <div className="font-semibold text-slate-700 mb-1">{t.open_link}:</div>
                 <div className="num break-all text-slate-500 font-mono select-all">{payment.redirectUrl}</div>
               </div>
+            )}
+
+            {!isStripe && payment.status === "completed" && (
+              <RefundEditor
+                id={payment.id}
+                amountFils={payment.amountFils}
+                tipFils={payment.tipFils}
+                currency={payment.currency}
+                originalAmountFils={payment.originalAmountFils}
+                originalCurrency={payment.originalCurrency}
+                amountRefundedFils={payment.amountRefundedFils}
+                zohoInvoiceNumber={payment.zohoInvoiceNumber}
+              />
             )}
           </Card>
 

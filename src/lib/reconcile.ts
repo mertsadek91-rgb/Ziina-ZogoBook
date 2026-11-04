@@ -67,7 +67,7 @@ export async function reconcile(opts: { ids?: string[]; sinceDays?: number } = {
     const result = matchPayment(
       {
         ziinaIntentId: p.ziinaIntentId,
-        grossFils: p.amountFils + p.tipFils,
+        grossFils: p.amountFils + p.tipFils - p.amountRefundedFils,
         feeFils: p.feeFils,
         date: dubaiDate(p.paidAt ?? p.createdAt),
         customerName: p.customerName,

@@ -107,7 +107,10 @@ export async function syncToZoho(paymentId: string, opts: SyncOptions): Promise<
     if (p.currency !== "AED") throw new Error(`لم تتم تسوية الدفعة بالدرهم بعد (العملة: ${p.currency}) — حدّث من Ziina وأعد المحاولة`);
 
     const reference = p.ziinaIntentId;
-    const amount = fromFils(p.amountFils + p.tipFils);
+    // Partial refunds (recorded on the payment) are not invoiced: the invoice is for what was kept.
+    const netFils = p.amountFils + p.tipFils - p.amountRefundedFils;
+    if (netFils <= 0) throw new Error("هذه الدفعة مستردة بالكامل — لا توجد قيمة لإصدار فاتورة بها");
+    const amount = fromFils(netFils);
     const date = opts.date || toDate(p.paidAt ?? p.createdAt);
 
     // 2. Before creating anything, make sure this payment is not already recorded in Zoho

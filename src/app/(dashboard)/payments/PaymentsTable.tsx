@@ -33,6 +33,7 @@ export interface Row {
   currency: string;
   originalAmountFils: number | null;
   originalCurrency: string | null;
+  refundedFils?: number;
   status: string;
   zohoStatus: string;
   customerName: string | null;
@@ -297,6 +298,9 @@ export function PaymentsTable({
                       {formatMoney(p.originalAmountFils, p.originalCurrency)}
                     </div>
                   )}
+                  {!!p.refundedFils && (
+                    <div className="num text-[11px] font-semibold text-rose-600">−{formatMoney(p.refundedFils, p.currency)}</div>
+                  )}
                 </div>
               </div>
 
@@ -415,6 +419,9 @@ export function PaymentsTable({
                     <div className="font-bold text-slate-900">{formatMoney(p.amountFils, p.currency)}</div>
                     {p.originalAmountFils != null && p.originalCurrency && (
                       <div className="text-xs text-slate-400">{formatMoney(p.originalAmountFils, p.originalCurrency)}</div>
+                    )}
+                    {!!p.refundedFils && (
+                      <div className="text-xs font-semibold text-rose-600">−{formatMoney(p.refundedFils, p.currency)}</div>
                     )}
                   </td>
 

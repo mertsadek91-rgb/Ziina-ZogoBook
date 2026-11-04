@@ -75,6 +75,7 @@ export default async function PaymentsPage({
     currency: p.currency,
     originalAmountFils: p.originalAmountFils,
     originalCurrency: p.originalCurrency,
+    refundedFils: p.amountRefundedFils,
     status: p.status,
     zohoStatus: p.zohoStatus,
     customerName: p.customerName,

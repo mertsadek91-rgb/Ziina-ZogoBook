@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
+import { applyZiinaRefund } from "@/lib/refund";
 import { intentToPaymentFields, verifyHmac, ZIINA_WEBHOOK_IPS, type ZiinaPaymentIntent } from "@/lib/ziina";
 
 export async function POST(req: Request) {
@@ -16,11 +17,28 @@ export async function POST(req: Request) {
     if (!ZIINA_WEBHOOK_IPS.includes(ip)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let payload: { event?: string; data?: ZiinaPaymentIntent };
+  let payload: { event?: string; data?: ZiinaPaymentIntent & Record<string, unknown> };
   try {
     payload = JSON.parse(raw);
   } catch {
     return NextResponse.json({ error: "Bad JSON" }, { status: 400 });
+  }
+
+  // Refund made in Ziina (e.g. a partial refund from the Ziina app): reduce the amount to invoice.
+  if (payload.event === "refund.status.updated" && payload.data?.id && payload.data.payment_intent_id) {
+    const d = payload.data;
+    try {
+      const r = await applyZiinaRefund({
+        id: String(d.id),
+        payment_intent_id: String(d.payment_intent_id),
+        amount: Number(d.amount),
+        currency_code: String(d.currency_code),
+        status: String(d.status),
+      });
+      return NextResponse.json({ ok: true, ...r });
+    } catch (e) {
+      return NextResponse.json({ ok: true, ignored: e instanceof Error ? e.message : String(e) });
+    }
   }
 
   if (payload.event !== "payment_intent.status.updated" || !payload.data?.id) {
