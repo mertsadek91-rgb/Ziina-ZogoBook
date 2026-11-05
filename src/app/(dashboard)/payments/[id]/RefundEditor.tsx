@@ -62,8 +62,11 @@ export function RefundEditor(p: Props) {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:underline">
-        <Undo2 className="h-3.5 w-3.5" />
+      <button
+        onClick={() => setOpen(true)}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm font-bold text-rose-700 transition hover:bg-rose-100"
+      >
+        <Undo2 className="h-4 w-4" />
         {p.amountRefundedFils ? (ar ? "تعديل المبلغ المسترد" : "Edit refunded amount") : ar ? "تسجيل استرداد (كلي أو جزئي)" : "Record a refund"}
       </button>
     );
